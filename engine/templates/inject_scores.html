@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block injects %}active{% endblock %}
+{% block content %}
+
+<h1>Injects</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Details</th>
+            <th>Files</th>
+            {% if current_user.is_admin %}
+            <th>Points</th>
+            <th></th>
+            {% endif %}
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for i in injects %}
+        <tr>
+            <td>{{ i.title }}</td>
+            <td class="overflow-auto">{{ i.text }}</td>
+            <td>{{ i.files }}</td>
+            {% if current_user.is_admin %}
+            <!-- vuln right here to fix: unuath user can post any points and tid they want -->
+            <td>
+                <form>
+                    <div class="row">
+                        <div class="col">
+                            <input class="form-control form-control-sm" id="points" type="text" placeholder="{{ i.points }}">
+                        </div>
+                        <div class="col">
+                            <button type="submit" class="btn btn-success btn-small">
+                                Check Off
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </td>
+            <td></td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

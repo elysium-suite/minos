@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block sla %}active{% endblock %}
+
+{% block content %}
+<br/>
+
+<style>
+h2, h4 {
+    text-align: center;
+}
+
+table.table {
+    width:75%;
+    margin: auto;
+}
+</style>
+
+{% if current_user.is_admin %}
+    <h2>SLA Totals</h2>
+    {% for team in teams %}
+        <br/>
+        <h4>SLA Totals for {{ team }}</h4>
+        <table class="table table-striped table-bordered" id="revert-table">
+            <thead class="thead-dark">
+                <th>Service</th>
+                <th>Total SLAs</th>
+            </thead>
+            <tbody>
+                {% for check, total in sla_totals[team].items() %}
+                <tr>
+                    <td>{{ check }}</td>
+                    <td>{{ total }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td><b>Total</b></td>
+                    <td>{{ sla_totals[team].values() | sum }}</td>
+                </tr>
+            </tbody>
+        </table>
+    {% endfor %}
+{% else %}
+    <h2>SLA Totals for {{ current_user.team }}</h2>
+    <table class="table table-striped table-bordered" id="revert-table">
+        <thead class="thead-dark">
+            <th>Service</th>
+            <th>Total SLAs</th>
+        </thead>
+        <tbody>
+            {% for check, total in sla_totals[current_user.team].items() %}
+            <tr>
+                <td>{{ check }}</td>
+                <td>{{ total }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td><b>Total</b></td>
+                <td>{{ sla_totals[current_user.team].values() | sum }}</td>
+            </tr>
+        </tbody>
+    </table>
+{% endif %}
+
+<br/><br/>
+
+{% if current_user.is_admin %}
+    <h2>SLA Log</h2>
+    <table class="table table-striped table-bordered" id="revert-table">
+        <thead class="thead-dark">
+            <th>Time</th>
+            <th>Team</th>
+            <th>Service</th>
+        </thead>
+        <tbody>
+            {% for team, check, time in sla_log %}
+                <tr>
+                    <td>{{ time }}</td>
+                    <td>{{ team }}</td>
+                    <td>{{ check }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <h2>SLA Log for {{ current_user.name }}</h2>
+    <table class="table table-striped table-bordered" id="revert-table">
+        <thead class="thead-dark">
+            <th>Time</th>
+            <th>Service</th>
+        </thead>
+        <tbody>
+            {% for team, check, time in sla_log %}
+                {% if team == current_user.team %}
+                <tr>
+                    <td>{{ time }}</td>
+                    <td>{{ check }}</td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+<br/>
+
+{% endblock %}

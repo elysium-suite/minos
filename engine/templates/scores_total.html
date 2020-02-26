@@ -1,0 +1,59 @@
+
+<!-- 
+<script>
+
+var ctx = document.getElementById('scoreLineGraph').getContext('2d');
+var chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [{% for cr in range(crs) %}'{{ cr+1 }}'{{ "," if not loop.last }}{% endfor %}],
+        datasets: [
+        {% for tid, t in ts.items() %}
+        {% set c1 = (range(60, 255) | random) %}
+        {% set c2 = (range(60, 255) | random) %}
+        {% set c3 = (range(60, 255) | random) %}
+        {
+            label: '{{ t.name }}',
+            fill: false,
+            backgroundColor: 'rgb({{c1}}, {{c2}}, {{c3}})',
+            borderColor: 'rgb({{c1}}, {{c2}}, {{c3}})',
+            data: [{% for s in ss[tid] %}'{{s}}'{{ "," if not loop.last }}{% endfor %}]
+        }{{ "," if not loop.last }}
+        {% endfor %}
+        ]
+    },
+
+    options: {
+		title: {
+			display: true,
+			text: 'Service Scores Over Time (Without SLA Violations)'
+		},
+		scales: {
+		    xAxes: [{
+			    display: true,
+			    scaleLabel: {
+				    display: true,
+				    labelString: 'Check Round'
+			    }
+		    }],
+		    yAxes: [{
+			    display: true,
+			    scaleLabel: {
+				    display: true,
+				    labelString: 'Total Score'
+			    }
+		    }]
+	    }
+	}
+});
+</script>
+{% endblock %}ript" src="/static/js/Chart.bundle-2.7.2.min.js"></script>
+<canvas id="scoreBarGraph"></canvas><br>
+<canvas id="scoreLineGraph"></canvas>
+
+<script>
+var ctx = document.getElementById('scoreBarGraph').getContext('2d');
+var chart = new Chart(ctx, {
+    type: 'horizontalBar',
+    data: {
+        labels: [{% for t in ts.values() %}'{{ t.name }}'{{ "," if not loop.last }}{% endfor %}],

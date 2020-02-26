@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block patch %}active{% endblock %}
+
+{% block head %}<meta http-equiv="refresh" content="5">{% endblock %}
+
+{% block content %}
+<h1>Patch Server</h1>
+<ul>
+{% for item in tree.children recursive %}
+    <li><a href="/static/patch/{{ item.name }}">{{ item.name }}</a>
+{% endfor %}
+
+</ul>
+{% endblock %}

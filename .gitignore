@@ -1,0 +1,6 @@
+patch/*
+checkfiles/*
+__pycache__
+__pycache__/*
+!engine/tmpfiles/.gitkeep
+engine/tmpfiles/*

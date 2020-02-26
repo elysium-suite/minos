@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block scores %}active{% endblock %}
+{% block content %}
+
+<style>
+#scoreBarGraph {
+    margin-top: 20px;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.94)), url("/static/logo.png");
+    background-size: 100px;
+}
+</style>
+
+<h1>Service Scores</h1>
+<script type="text/javascript" src="/static/js/Chart.bundle-2.7.2.min.js"></script>
+<canvas id="scoreBarGraph"></canvas><br>
+<canvas id="scoreLineGraph"></canvas>
+
+<script>
+var ctx = document.getElementById('scoreBarGraph').getContext('2d');
+var chart = new Chart(ctx, {
+    type: 'horizontalBar',
+    data: {
+        labels: [{% for team in teams %}'{{ team }}'{{ "," if not loop.last }}{% endfor %}],
+        datasets: [{
+            label: 'Current Score',
+            backgroundColor: [{% for team in teams %}{% if rg[team] == 1 %}'rgb(152,251,152)'{% else %}'rgb(204, 0, 0)'{% endif %}{{ "," if not loop.last }}{% endfor %}],
+            borderColor: 'rgb(255, 255, 255)',
+            data: [{% for team in teams %}{{ scores[team] }}{{ "," if not loop.last }}{% endfor %}]
+        }]
+    },
+
+    options: {
+		title: {
+			display: true,
+			text: 'Service Scores'
+		},
+		scales: {
+		    xAxes: [{
+			    display: true,
+			    scaleLabel: {
+				    display: true,
+				    labelString: 'Score'
+			    },
+			    ticks: {
+			        beginAtZero: true
+		        }
+		    }],
+		    yAxes: [{
+			    display: true,
+			    scaleLabel: {
+				    display: true,
+				    labelString: 'Team'
+			    }
+		    }]
+	    }
+	}
+});
+
+</script>
+
+{% endblock %}
+

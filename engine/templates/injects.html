@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block injects %}active{% endblock %}
+{% block content %}
+
+
+{% if current_user.is_admin %}
+<br>
+<h2>Published Injects</h2>
+{% else %}
+<h1>Injects</h1>
+{% endif %}
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Title</th>
+            <th>Details</th>
+            <th>Files</th>
+            {% if current_user.is_admin %}
+            <th>Points</th>
+            {% endif %}
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for inject in pub_injects.values() %}
+        <tr>
+            <td>{{ inject.time }}</td>
+            <td>{{ inject.title }}</td>
+            <td class="overflow-auto">{{ inject.details }}</td>
+            {% if inject.files %}
+                <td>{{ inject.files }}</td>
+            {% else %}
+                <td>N/A</td>
+            {% endif %}
+            {% if current_user.is_admin %}
+                {% if inject.points %}
+                    <td>{{ inject.points }}</td>
+                {% else %}
+                    <td>N/A</td>
+                {% endif %}
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if current_user.is_admin %}
+
+<br>
+<h2>All Injects</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Title</th>
+            <th>Details</th>
+            <th>Files</th>
+            <th>Points</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in injects.values() %}
+        <tr>
+            <td>{{ i.time }}</td>
+            <td>{{ i.title }}</td>
+            <td class="overflow-auto">{{ i.details }}</td>
+            {% if i.files %}<td>{{ i.files }}</td>{% else %}<td>N/A</td>{% endif %}
+            {% if i.points %}<td>{{ i.points }}</td>{% else %}<td>N/A</td>{% endif %} 
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endif %}
+
+{% endblock %}

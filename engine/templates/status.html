@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block status %}active{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="15">{% endblock %}
+{% block content %}
+
+<style>
+img {
+    display: block;
+    margin: auto;
+}
+.container {
+    margin-top: 20px;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.96)), url("/static/logo.png");
+    background-size: 100px;
+  
+}
+th {
+    text-align: center;
+}
+td.check-name {
+    text-align: right;
+}
+td:not(.check-name) {
+    cursor: pointer;
+}
+</style>
+
+<span style="margin: auto; display:table; "><b>Service Status: {{ latest }}</b></span>
+<br>
+
+{% if checks %}
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th></th>
+            {% for check in checks %}
+                <th>{{ check }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+
+    <tbody>
+    {% for team in teams %}
+    <tr>
+        <td class="check-name">{{ team }}</td>
+        {% for check in checks %}
+            {% if status[team][check][0] is equalto 1 %}
+            <td class='clickable' data-href='/scores/result?team={{ team }}&check={{ check }}'>
+                    <img style="width:40px" src="/static/up.png"/>
+            </td>
+            {% elif status[team][check][0] is equalto 2 %}
+            <td>
+                    <img style="width:40px" src="/static/pending.png"/>
+            </td>
+            {% else %}
+            <td class='clickable' data-href='/scores/result?team={{ team }}&check={{ check }}'>
+                    <img style="width:35px" src="/static/down.png"/>
+            </td>
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<span style="margin: auto; display:table; "><b>First check is in progress.</b></span>
+<br>
+{% endif %}
+
+{% endblock %}
