@@ -165,6 +165,7 @@ def check_http(ip, port, proto, host, path, checkfile, tolerance):
 import ftplib
 def check_ftp(ip, port, anon, checkfile, filehash):
     ftp = ftplib.FTP()
+    return (0, "WIP")
     if checkfile and filehash:
         tmpfile = "tmpfiles/%s-%s-%sresult" % (port, ip, checkfile)
         extension = self.get_extension(poll_input.filepath)
@@ -190,7 +191,7 @@ def check_ftp(ip, port, anon, checkfile, filehash):
             f.close()
             result = FtpPollResult(None, e)
             return result
-    else:
+    #else:
 
 ################
 # SMTP Checker #
