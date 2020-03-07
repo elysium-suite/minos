@@ -243,11 +243,8 @@ def check_dns(ip, query, query_type, answer):
 ###############
 
 @timeout_decorator.timeout(20, use_signals=False)
-def check_rdp(username, password, domain):
-    """ # WORK IN PRORESS
-    username = poll_input.credentials.username
-    password = poll_input.credentials.password
-    domain = poll_input.credentials.domain
+def check_rdp(ip, domain, username, password):
+""" # WORK IN PRORESS
     cmd = ['xfreerdp', '--ignore-certificate', '--authonly', '-u', username, '-p', password]
     if not domain is None:
         cmd.extend(['-d', domain.domain])

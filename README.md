@@ -1,15 +1,15 @@
-# Minos CyberPatriot Scoring Engine
+# Minos Scoring Engine
 
-This is a scoring engine meant to imitate the functionality of UTSA's CIAS CyberPatriot Scoring Engine (along with some new features, and some missing), with an emphasis on simplicity. It acts as an uptime scorer (ex. your service has been up 50% of the time, and is down right now). It is based on DSU's DefSec Club [Scoring Engine](https://github.com/DSUDefSec/ScoringEngine). Named after the Greek myth of King Minos, judge of the dead.
+This is a scoring engine meant to imitate the functionality of UTSA's CIAS CyberPatriot Scoring Engine with an emphasis on simplicity.  It acts as an uptime scorer (ex. your service has been up 50% of the time, and is down right now). It is based on DSU's DefSec Club [Scoring Engine](https://github.com/DSUDefSec/ScoringEngine). Named after the Greek myth of King Minos, judge of the dead.
 
 ## Features
 
 - Uptime scoring engine
-    - Configurable round timing
     - HTTP/HTTPS
-    - SSH, RDP
-    - SMB, FTP
-    - SMTP, IMAP
+    - SSH
+    - SMB
+    - FTP
+    - SMTP
     - DNS
 - Built-in patch server (folder of indexed files)
 - Scoring check history, uptime percentages
@@ -17,7 +17,7 @@ This is a scoring engine meant to imitate the functionality of UTSA's CIAS Cyber
 - Clock and competition time tracker
 - Timing-based injects and scoring
 - CyberPatriot-esque scoring graphics and pages :)
-- (TODO) CSS Find-and-fix vulnerability leaderboard
+- (WIP) CSS Find-and-fix vulnerability leaderboard
 
 ## Screenshots
 
@@ -42,7 +42,18 @@ sudo systemctl restart scoring_engine scoring_web
 ```
 3. Browse to `http://localhost`.
 
-By default, the configuration and database don't reset when you start the engine. Set the `"reset=1"` flag in the `[settings]` directive to reset on launch.
+By default, the configuration and database don't reset when you start the engine, as long as there is a currently existing `running-config.cfg`. Set the `"reset=1"` flag in the `[settings]` directive to reset every time the engine launches.
+
+## Scoring Engine Mechanics
+
+- Check round runs every 2-3 minutes
+- Team gets 1 point for each service up and functional each check
+- Team gets 0 points for each service down
+- Each five consecutive service down checks is -5 point penalty (SLA violation)
+
+## CSS Points
+
+(WIP) Engine takes CSS scores from an HTTP post request. If you're making your own client scoring software, request and auth token then use it. Your auth token will be the only one accepted for the machine for the duration of the scoring session, until it expires (5 mins without use) or the scoring engine resets.
 
 ## Configuration
 
@@ -109,20 +120,59 @@ user = "root" # User must be set for key auth
 ```
 [systems.systemname.smb]
 port = 1234 # Default 445
-checkfile = "cool_bug_facts.txt" # File to retrieve
-filehash = "9bb6c1dc2408ee6cb09778ca2ac6abad91de9be4 " # sha1 hash for checkfile
+file = "cool_bug_facts.txt" # File to retrieve
+hash = "9bb6c1dc2408ee6cb09778ca2ac6abad91de9be4 " # sha1 hash of the file
 domain = "bugfacts.lan" # Default None
 ```
+> Without file or hash, authentication won't be tested.
 
-- rdp
-    - port (default 3389)
-- smtp
-- http and https
-    - path (page to get)
-    - file (file to compare to)
-    - port (default 80 and 443)
-    - tolerance (default 0, percent difference allowed)
-    - host (default to ip, Host property for HTTP request)
+#### http/https
+```
+[systems.systemname.http]
+port = 1234 # Default 80
+host = localhost # Parameter to pass to "Host" header (Default IP)
+path = "/index.php" # Remote path to retrieve (default '/'')
+file = "systemname.html" # Local checkfile to compare with
+tolerance = 50 # Difference tolerance, default 10%
+```
+```
+[systems.systemname.https]
+port = 1234 # Default 443
+host = localhost # Parameter to pass to "Host" header (Default IP)
+path = "/index.php" # Remote path to retrieve (default '/'')
+file = "systemname.html" # Local checkfile to compare with
+tolerance = 50 # Difference tolerance, default 10%
+```
+
+#### ftp
+```
+[systems.systemname.ftp]
+port = 1234 # Default 21
+file = "cool_bug_facts.txt" # File to retrieve
+hash = "9bb6c1dc2408ee6cb09778ca2ac6abad91de9be4 " # sha1 hash of the file
+file = "systemname.html" # Local checkfile to compare with
+```
+> Without file or hash, authentication won't be tested.
+
+#### smtp
+```
+[system.systemname.smtp]
+port = 1234 # Default 25
+testhost = localhost.lan # Server to declare yourself as. Default example.org
+```
+
+#### dns
+```
+[system.systemname.dns]
+port = 1234 # Default 53
+query = "cool-site.lan" # Domain to query
+query_type = "AAAA" # Default 'A' (IPv4)
+answer = "127.0.0.1" # Correct answer to query
+```
+> Without query or answer, the checker won't work.
+
+#### rdp
+Not supported yet.
 
 ## Patch Server
 
@@ -132,19 +182,33 @@ Put any files you want served with the patch server in `/opt/minos/patch`.
 
 Injects are all based on the competition time. There are three types of injects:
 - Service: will add a new scored service to all teams
+```
+[injects.1]
+time = "0:05"
+type = "service"
+enact_time = "0:35"
+title = "Add FTP server"
+files = [ "file.pdf", ]
+details = "Hello, please add the attached file to a new FTP server on Server3."
+
+    [injects.1.services.server3]
+    checks = [ "ftp",]
+
+        [injects.1.services.server3.ftp]
+        file = "file.pdf"
+        hash = "05ec7de5d536998263a73b5da698711f7bfffb58"
+```
 - Manual: manually scored injects (ex. intrusion reports, memos, changelogs)
-- Custom: (NOT IMPLEMENTED YET) test for a condition in the client scoring engine
+```
+[injects.1]
+time = "0:05"
+type = "manual"
+title = "Add Server2 to the Domain"
+details = "Hello, please attach Server2 to the domain LocalDomain.lan."
+points = 500
+```
+- Custom: (WIP) test for a condition in the client scoring engine
 
-## CSS Points
-
-(NOT IMPLEMENTED YET) Engine takes CSS scores from an HTTP post request. If you're making your own client scoring software, request and auth token then use it. Your auth token will be the only one accepted for the machine for the duration of the scoring session, until it expires (5 mins without use) or the scoring engine resets.
-
-## Scoring Engine Mechanics
-
-- Check round runs every 2-3 minutes (in example config above)
-- Team gets 1 point for each service up and functional each check
-- Team gets 0 points for each service down
-- Each five consecutive service down checks is -5 point penalty (SLA violation)
 
 
 ### Detailed Example
@@ -229,7 +293,6 @@ type = "manual"
 title = "Add the machine to the domain"
 details = "In order to effectively distribute our group policy, please add the last Windows machine to the paradis.island domain."
 points = "500"
-
 ```
 
 ## Contributing and Disclaimer
