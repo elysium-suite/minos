@@ -101,7 +101,8 @@ def get_service_checks(team, check):
         return execute("SELECT result, error, time FROM \
                 service_results WHERE team=? and name=? ORDER BY time DESC", \
                 (team, check))
-    except:
+    except Exception as e:
+        print("[ERROR] Error occured in get_service_checks:", e)
         return False
 
 
@@ -115,14 +116,14 @@ def get_service_points(team):
 
 def insert_service_score(check_round, team, system, check, result, error):
     if error:
-        try:
-            error = re.sub('[^a-zA-Z.\d\s]', '', error)
-        except:
-            print("[ERROR] Error couldn't be processed for", check, ":", error)
-            error = "Error couldn't be processed."
-    execute("INSERT INTO `service_results` ('check_round', 'team', 'name', \
-            'result', 'error') VALUES (?, ?, ?, ?, ?)", (check_round, team, \
-            system + "-" + check, result, error))
+        error = re.sub('[^a-zA-Z.\d\s\/]', '', str(error))
+    try:
+        execute("INSERT INTO `service_results` ('check_round', 'team', 'name', \
+                'result', 'error') VALUES (?, ?, ?, ?, ?)", (check_round, team, \
+                system + "-" + check, result, error))
+    except Exception as e:
+        print("[ERROR] Error couldn't be processed for", check, ":", error)
+        error = "Error couldn't be processed:" + str(e)
 
 def insert_totals_score(team, type, points):
     execute("INSERT INTO `totals` ('team', 'type', 'points') VALUES \
@@ -139,6 +140,7 @@ def copy_config():
         config = toml.load(f)
     with open('running-config.cfg', 'w') as f:
         toml.dump(config, f)
+
 
 def read_config():
     with open('config.cfg', 'r') as f:

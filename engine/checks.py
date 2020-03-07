@@ -31,11 +31,16 @@ def checker(check_round, system, check, type, opts, team, ip):
                 port = 443
             else:
                 port = 80
-            proto = gopt('proto', opts) or "http"
+            if gopt('proto', opts):
+                port = gopt('proto', opts)
+            elif check == "https":
+                proto = "https"
+            else:
+                proto = "http"
             host = gopt('host', opts) or ip
             path = gopt('path', opts) or ""
             checkfile = gopt('file', opts) or None
-            tolerance = gopt('tolerance', opts) or 10
+            tolerance = gopt('tolerance', opts) or 20
             result, error = check_http(ip, port, proto, host, path, checkfile, tolerance)
         elif type == "ftp":
             port = gopt('port', opts) or "21"
@@ -83,10 +88,10 @@ def check_ssh(ip, port, user, private_key):
         if private_key and user:
             print("[DEBUG-SSH] Trying pubkey auth for", ip)
             k = RSAKey.from_private_key_file("/opt/minos/engine/checkfiles/" + private_key)
-            cli.connect(ip, port, user, "Password2@", timeout=5, auth_timeout=5, pkey=k)
+            cli.connect(ip, port, user, "Password2@", banner_timeout=3, timeout=5, auth_timeout=5, pkey=k)
         else:
             print("[DEBUG-SSH] Trying standard auth for", ip)
-            cli.connect(ip, port, "root", "Password3#", timeout=5, auth_timeout=5)
+            cli.connect(ip, port, "root", "Password3#", banner_timeout=3, timeout=5, auth_timeout=5)
         cli.close()
         return 1, None
     except (Exception, socket.error) as e:
@@ -113,8 +118,8 @@ def check_smb(ip, port, anon, share, checkfile, filehash, domain):
         #try:
         print("[DEBUG-SMB] Grabbing file for", ip)
         output = subprocess.check_output(smbcli, stderr=subprocess.STDOUT)
-        with open(tmpfile, "r") as f:
-            content = f.read().encode('utf-8')
+        with open(tmpfile, "rb") as f:
+            content = f.read()
             checkhash = hashlib.sha1(content).hexdigest();
         if checkhash != filehash:
             return(0, "Hash %s does not match %s." % (checkhash, filehash))
@@ -152,16 +157,17 @@ def check_http(ip, port, proto, host, path, checkfile, tolerance):
         session = requests.Session()
         r = session.get(url, headers=headers, verify=False, allow_redirects=True)
         r.raise_for_status()
-        content = r.text
+        content = str.encode(r.text)
         if checkfile:
-            with open("checkfiles/%s" % checkfile, 'r') as f:
+            with open("checkfiles/%s" % checkfile, 'rb') as f:
                 expected = f.read()
             seq = SequenceMatcher(None, expected, content)
-            difference = seq.quick_ratio()
-            if difference <= (100 - tolerance):
-                with open(tmpfile, "w") as cf:
+            difference = (100 - (seq.quick_ratio() * 100))
+            print("[DEBUG-HTTP] Difference between retrieved page and", checkfile, "is", difference, "while tolerance is", tolerance)
+            if difference * 100 >= tolerance:
+                with open(tmpfile, "wb") as cf:
                     cf.write(content)
-                return (0, "Page differed too greatly. See file retrived at " + tmpfile)
+                return (0, "Page differed too greatly. See file retrieved at " + tmpfile)
         return (1, None)
     except Exception as e:
         return (0, str(e))
@@ -244,7 +250,7 @@ def check_dns(ip, query, query_type, answer):
 
 @timeout_decorator.timeout(20, use_signals=False)
 def check_rdp(ip, domain, username, password):
-""" # WORK IN PRORESS
+    """ # WORK IN PRORESS
     cmd = ['xfreerdp', '--ignore-certificate', '--authonly', '-u', username, '-p', password]
     if not domain is None:
         cmd.extend(['-d', domain.domain])

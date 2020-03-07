@@ -121,6 +121,7 @@ def service():
     sla_totals, _ = em.get_slas()
     for team in em.teams:
         service_points = db.get_service_points(team)
+        print("[SCORING] Service points for team", team, "is", service_points)
         if service_points is not None:
             service_points = service_points[0]
         else:

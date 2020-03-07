@@ -133,7 +133,7 @@ port = 1234 # Default 80
 host = localhost # Parameter to pass to "Host" header (Default IP)
 path = "/index.php" # Remote path to retrieve (default '/'')
 file = "systemname.html" # Local checkfile to compare with
-tolerance = 50 # Difference tolerance, default 10%
+tolerance = 50 # Difference tolerance, default 20%
 ```
 ```
 [systems.systemname.https]
@@ -141,7 +141,7 @@ port = 1234 # Default 443
 host = localhost # Parameter to pass to "Host" header (Default IP)
 path = "/index.php" # Remote path to retrieve (default '/'')
 file = "systemname.html" # Local checkfile to compare with
-tolerance = 50 # Difference tolerance, default 10%
+tolerance = 50 # Difference tolerance, default 20%
 ```
 
 #### ftp

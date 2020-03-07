@@ -74,6 +74,7 @@ class EngineModel(object):
                         sla += 1
                         down = 0
                 sla_totals[team][check] = sla
+        print("[SCORING] SLA TOTALS IS", sla_totals)
         return sla_totals, sla_log
 
     def calculate_scores(self, check_round):
@@ -86,6 +87,7 @@ class EngineModel(object):
                 for check_result in check_results:
                     if check_result[0] == 1:
                         service_score += 1
+            db.insert_totals_score(team, "service", service_score)
 
             # SLA
             sla_points = 0
