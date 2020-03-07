@@ -30,7 +30,11 @@
             <td>{{ inject.title }}</td>
             <td class="overflow-auto">{{ inject.details }}</td>
             {% if inject.files %}
-                <td>{{ inject.files }}</td>
+                <td>
+                {% for file in inject.files %}
+                   <a href="/static/injectfiles/{{ file }}">{{ file }}</a>
+                {% endfor %}
+                </td>
             {% else %}
                 <td>N/A</td>
             {% endif %}
@@ -66,7 +70,15 @@
             <td>{{ i.time }}</td>
             <td>{{ i.title }}</td>
             <td class="overflow-auto">{{ i.details }}</td>
-            {% if i.files %}<td>{{ i.files }}</td>{% else %}<td>N/A</td>{% endif %}
+            {% if i.files %}
+                <td>
+                {% for file in i.files %}
+                   <a href="/static/injectfiles/{{ file }}">{{ file }}</a>
+                {% endfor %}
+                </td>
+            {% else %}
+                <td>N/A</td>
+            {% endif %}
             {% if i.points %}<td>{{ i.points }}</td>{% else %}<td>N/A</td>{% endif %} 
         {% endfor %}
     </tbody>

@@ -4,72 +4,77 @@
     <head>
         <title>Scoring Engine</title>
         <link rel="stylesheet" href="/static/css/bootstrap-4.0.0.min.css">
-        <link rel="stylesheet" href="/static/css/fontawesome.min.css">
         <link rel="stylesheet" href="/static/css/style.css">
-        <script src="/static/js/feather.min.js"></script>
         <script src="/static/js/jquery-3.2.1.slim.min.js"></script>
         <script src="/static/js/popper-1.12.9.min.js"></script>
+        <script src="/static/js/feather.min.js"></script>
         <script src="/static/js/bootstrap-4.0.0.min.js"></script>
         <script src="/static/js/scripts.js"></script>
         {% block head %}
         {% endblock%}
     </head>
-    
+
     <body>
-        <nav class="navbar nav navbar-expand-sm navbar-dark bg-dark">
-            <a class="navbar-brand" href="{{ url_for('status') }}">Scoring Engine</a>
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item {% block status %}{% endblock %}">
-                    <a class="nav-link" href="{{ url_for('status') }}">Status</a>
-                </li>
-                <li class="nav-item {% block uptime %}{% endblock %}">
-                    <a class="nav-link" href="{{ url_for('uptime') }}">Uptime</a>
-                </li>
-                <li class="nav-item {% block clock %}{% endblock %}">
-                    <a class="nav-link" href="{{ url_for('clock') }}">Clock</a>
-                </li>
-                <li class="nav-item {% block injects %}{% endblock %}">
-                    <a class="nav-link" href="{{ url_for('injects') }}">Injects</a>
-                </li>
-                <li class="nav-item {% block patch %}{% endblock %}">
-                    <a class="nav-link" href="{{ url_for('patch') }}">Patch</a>
-                </li>
-                <li class="d-inline-block nav-item dropdown {% block reporting %}{% endblock %}">
-                    <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Scores</a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" href="{{ url_for('service') }}">Service Scores</a>
-                        {% if current_user.is_authenticated %}
-                        <a class="dropdown-item" href="{{ url_for('sla') }}">SLA Penalties</a>
-                        <a class="dropdown-item" href="{{ url_for('css') }}">CSS Scores</a>
-                        <a class="dropdown-item" href="{{ url_for('inject_scores') }}">Inject Scores</a>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #041e42;">
+        <a class="navbar-brand" href="{{ url_for('status') }}"><b>Minos SE</b></a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item {% block status %}{% endblock %}">
+                        <a class="nav-link" href="{{ url_for('status') }}">Status</a>
+                    </li>
+                    <li class="nav-item {% block uptime %}{% endblock %}">
+                        <a class="nav-link" href="{{ url_for('uptime') }}">Uptime</a>
+                    </li>
+                    <li class="nav-item {% block clock %}{% endblock %}">
+                        <a class="nav-link" href="{{ url_for('clock') }}">Clock</a>
+                    </li>
+                    <li class="nav-item {% block injects %}{% endblock %}">
+                        <a class="nav-link" href="{{ url_for('injects') }}">Injects</a>
+                    </li>
+                    <li class="nav-item {% block patch %}{% endblock %}">
+                        <a class="nav-link" href="{{ url_for('patch') }}">Patch</a>
+                    </li>
+                    <li class="d-inline-block nav-item dropdown {% block reporting %}{% endblock %}">
+                        <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Scores</a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ url_for('service') }}">Service Scores</a>
+                            <a class="dropdown-item" href="{{ url_for('css') }}">CSS Scores</a>
+                            {% if current_user.is_authenticated %}
+                            <a class="dropdown-item" href="{{ url_for('sla') }}">SLA Penalties</a>
+                            <a class="dropdown-item" href="{{ url_for('inject_scores') }}">Inject Scores</a>
+                            {% elif current_user.is_admin %}
+                            <a class="dropdown-item" href="{{ url_for('total') }}">Total Scores</a>
+                            {% endif %}
+
+                        </div>
+                    </li>
+                </ul>
+                <ul class="navbar-nav navbar-right">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                        <li class="nav-item {% block settings %}{% endblock %}">
+                            <a class="nav-link" href="{{ url_for('settings') }}">Settings</a>
+                        </li>
+                        {% else %}
+                        <li class="nav-item {% block team_page %}{% endblock %}">
+                            <a class="nav-link" href="{{ url_for('team_page') }}">Team Page</a>
+                        </li>
                         {% endif %}
-                        <a class="dropdown-item" href="{{ url_for('total') }}">Total Scores</a>
-                        
-                    </div>
-                </li>
-            </ul>
-            <ul class="navbar-nav navbar-right">
-                {% if current_user.is_authenticated %}
-                    {% if current_user.is_admin %}
-                    <li class="nav-item {% block settings %}{% endblock %}">
-                        <a class="nav-link" href="{{ url_for('settings') }}">Settings</a>
-                    </li>
-                    {% else %}
-                    <li class="nav-item {% block team_page %}{% endblock %}">
-                        <a class="nav-link" href="{{ url_for('team_page') }}">Team Page</a>
-                    </li>
                     {% endif %}
-                {% endif %}
-                {% if current_user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
-                    </li>
-                {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
-                    </li>
-                {% endif %}
-            </ul>
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
         </nav>
 
         {% with messages = get_flashed_messages() %}

@@ -1,4 +1,6 @@
+running-config.conf
 patch/*
+injectfiles/*
 checkfiles/*
 engine/tmpfiles/*
 __pycache__

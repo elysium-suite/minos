@@ -1,9 +1,9 @@
 from threading import Thread
 from checks import checker
-import timeout_decorator
 import sqlite3 as sql
 import time, random
 import db
+import os
 import sys
 
 class EngineModel(object):
@@ -14,25 +14,29 @@ class EngineModel(object):
     def check(self, check_round):
         self.calculate_scores(check_round)
         self.check_injects()
-        print("[INFO] New round of checks.")
+        self.load()
+        print("[INFO] New round of checks ( CHECKROUND", check_round, ").")
         for team, team_info in self.teams.items():
             for system, sys_info in self.systems.items():
                 for check in sys_info['checks']:
                     opts = None if check not in sys_info else sys_info[check]
+                    if opts and "type" in sys_info[check]:
+                        type = sys_info[check]["type"]
+                    else:
+                        type = check
                     ip = self.settings['network']. \
                         format(team_info['subnet'], sys_info['host'])
                     thread = Thread(target=checker, args=(check_round, system, \
-                        check, opts, team, ip))
+                        check, type, opts, team, ip))
                     thread.start()
-        
+
     def latest(self):
         try: return db.get_service_latest()
         except: return "No checks completed yet."
 
     def status(self):
         try: check_round = db.get_check_round()
-        except: check_round = 1 
-        print("CHECK ROUND", check_round)
+        except: check_round = 1
         status = {}
         for team in self.teams:
             status[team] = {}
@@ -43,20 +47,18 @@ class EngineModel(object):
                     try: [(result, error, time)] = \
                          db.get_service_check(team, check, check_round-1)
                     except: result, error, time = (2, "Pending.", "00:00")
-                status[team][check] = (result, error, time)  
+                status[team][check] = (result, error, time)
         return status
-        
+
     def results(self):
         results = {}
         for team in self.teams:
             results[team] = {}
             for check in self.checks:
-                result_log = db.execute("SELECT result, error, time FROM \
-                    service_results WHERE team=? and name=? ORDER BY time DESC", \
-                    (team, check))
-                results[team][check] = result_log 
+                result_log = db.get_service_checks(team, check)
+                results[team][check] = result_log
         return results
-        
+
     def get_slas(self):
         results = self.results()
         sla_totals, sla_log = {}, []
@@ -73,7 +75,7 @@ class EngineModel(object):
                         down = 0
                 sla_totals[team][check] = sla
         return sla_totals, sla_log
-        
+
     def calculate_scores(self, check_round):
         results = self.results()
         sla_totals, _ = self.get_slas()
@@ -84,47 +86,62 @@ class EngineModel(object):
                 for check_result in check_results:
                     if check_result[0] == 1:
                         service_score += 1
-            db.execute("INSERT INTO `totals` ('team', 'type', 'points') VALUES \
-                (?, ?, ?)", (team, "service", service_score))
-            
+
             # SLA
             sla_points = 0
             for check in self.checks:
                 sla_points += -5 * sla_totals[team][check]
-            db.execute("INSERT INTO `totals` ('team', 'type', 'points') VALUES \
-                (?, ?, ?)", (team, "sla", sla_points))
-          
+            db.insert_totals_score(team, "sla", sla_points)
+
             # CSS Points
             css_points = 0
-            
+
             # Total Points
-            db.execute("INSERT INTO `totals` ('team', 'type', 'points') VALUES \
-                (?, ?, ?)", (team, "total", service_score + sla_points + css_points))
-                
+            db.insert_totals_score(team, "total", service_score + sla_points + css_points)
+
     def check_injects(self):
         for title, inject in self.injects.items():
-            print("INJECT IS", inject)
-            if db.get_current_time() > db.format_time(inject["time"]):
+            if db.get_current_time() > db.format_time(inject["time"]) and "ran" not in inject:
                 print("[INFO] Checking data for inject", title)
+                config = db.read_running_config()
                 self.injects[title] = inject
-                if "services" in inject:
+                if inject["type"] == "service" and "services" in inject:
                     if db.get_current_time() > db.format_time(inject["enact_time"]):
-                        print("ADDING SERVICE FOR INJECT", title)
-                        print("INECJT SERVICES", inject["services"])
-                        """
-                        for system, check in inject["services"]:
-                            print("SYSTEM", system, "CHECK", check) 
-                            #self.services[inject.service
-                        config = db.read_running_config
-                        db.write_running_config(config)
-                    """
+                        print("[INFO] Adding service into running-config for", title)
+                        config["injects"][title]["ran"] = 1
+                        for system, checks in inject["services"].items():
+                            if system in config["systems"]:
+                                for index, check in enumerate(checks["checks"]):
+                                    if check in config["systems"][system]["checks"] and "modify" in check:
+                                        print("[INFO] Modifying check", check, "for", system)
+                                        del config["systems"][system]["checks"][check]
+                                    elif check in config["systems"][system]["checks"]:
+                                        print("[ERROR] Duplicate check", check, "for", system, "without modify option")
+                                        del checks["checks"][index]
+                                new_checks = config["systems"][system]["checks"] + checks["checks"]
+                                host_ip = config["systems"][system]["host"]
+                                config["systems"][system] = checks
+                                config["systems"][system]["checks"] = new_checks
+                                config["systems"][system]["host"] = host_ip
+                            else:
+                                config["systems"][system] = checks
+                            del config["injects"][title]["services"]
+                else:
+                    config["injects"][title]["ran"] = 1
+                db.write_running_config(config)
 
-def start():  
-    check_round = 0
+def start():
     em = EngineModel()
-    db.write() # Reset database
-    db.set_start_time()
-    print("[INFO] Starting! Start time is", db.get_start_time())
+    em.load()
+    check_round = 0
+
+    #config = db.read_config()
+    #if "reset" in config["settings"] and config["settings"]["reset"] == 1:
+    db.reset_engine()
+    #elif db.check_db() == False:
+    #    db.reset_engine()
+    #else
+    #    check_round = db.get_check_round()
 
     while True:
         em.load()
@@ -144,15 +161,15 @@ def start():
             return
         else:
             print("[ERROR] Unsure what 'running' is set to.")
-        
+
         print("[WAIT]", str(em.wait), "seconds")
         time.sleep(em.wait)
 
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-
         start()
+
     # stop mechanism doesnt work, systemd just shoots the process
     elif len(sys.argv) == 2 and sys.argv[1] == "stop":
         print("[CONF] Stopping engine...")
@@ -160,4 +177,3 @@ if __name__ == '__main__':
 
     else:
          print("Usage: ./engine.py [stop]")
-

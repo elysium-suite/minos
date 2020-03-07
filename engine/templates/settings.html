@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block settings %}active{% endblock %}
+{% block content %}
+
+
+<h2>Settings</h2>
+
+Use the following big red button to reset and restart the scoring engine. (WARNING: This will erase all the data in your database).
+<form method="POST">
+    
+    <input type="submit" style="margin-top:10px;" class="btn btn-bg bg-danger text-white" id="action" name="action" value="Reset"/>
+
+</form>
+
+
+{% endblock %}

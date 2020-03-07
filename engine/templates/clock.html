@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block sla %}active{% endblock %}
+{% block clock %}active{% endblock %}
 {% block content %}
 
 
@@ -9,15 +9,14 @@
         <div id="compTime"></div>
     </h1>
     <h2 class="lead">
-        Competition started at <b>{{ start_time }}</b> and its duration is {{ duration }}.
+        Competition duration is {{ duration }}.
     </h2>
 </div>
 
-<div class="jumbotron">  
+<div class="jumbotron">
     <b><i><h2>Current Time</h2></b></i>
     <h1><div id="realTime"></div></h1>
 </div>
-
 
 <noscript>
 JavaScript is needed for this clock to work. The current competition time remaining, though, is {{ time_left }}.
@@ -32,9 +31,9 @@ function CompClock(){;
     time_left = time_left.split(":")
     var seconds = time_left[2], minutes = time_left[1], hours = time_left[0], t;
     var old_min = 0;
-    
+
     countdown()
-    
+
     function countdown() {
         if (hours >= 0 && minutes >= 0 && seconds >= 0) {
             old_min = minutes;
@@ -47,14 +46,14 @@ function CompClock(){;
                     hours--;
                 }
             }
-            
+
             if (seconds <= 9) seconds = "0" + seconds;
             if (minutes <= 9 && old_min != minutes) minutes = "0" + minutes;
             current = document.getElementById('compTime');
             current.innerHTML = hours + ":" + minutes + ":" + seconds;
         }
     }
-    
+
     setInterval(countdown, 1000);
 }
 
