@@ -88,10 +88,10 @@ def check_ssh(ip, port, user, private_key):
         if private_key and user:
             print("[DEBUG-SSH] Trying pubkey auth for", ip)
             k = RSAKey.from_private_key_file("/opt/minos/engine/checkfiles/" + private_key)
-            cli.connect(ip, port, user, "Password2@", banner_timeout=3, timeout=5, auth_timeout=5, pkey=k)
+            cli.connect(ip, port, user, banner_timeout=20, timeout=20, auth_timeout=20, pkey=k)
         else:
             print("[DEBUG-SSH] Trying standard auth for", ip)
-            cli.connect(ip, port, "root", "Password3#", banner_timeout=3, timeout=5, auth_timeout=5)
+            cli.connect(ip, port, "root", "Password3#", banner_timeout=20, timeout=20, auth_timeout=20)
         cli.close()
         return 1, None
     except (Exception, socket.error) as e:
@@ -231,7 +231,7 @@ def check_smtp(ip, port, testhost):
 from dns import resolver
 
 @timeout_decorator.timeout(20, use_signals=False)
-def check_dns(ip, query, query_type, answer):
+def check_dns(ip, port, query, query_type, answer):
     res = resolver.Resolver()
     res.nameservers = [ip]
     try:

@@ -1,4 +1,4 @@
-running-config.conf
+*/running-config.conf
 patch/*
 injectfiles/*
 checkfiles/*
