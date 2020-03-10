@@ -15,7 +15,7 @@ class EngineModel(object):
         self.calculate_scores(check_round)
         self.check_injects()
         self.load()
-        print("[INFO] New round of checks ( CHECKROUND", check_round, ").")
+        print("[INFO] New round of checks (CHECKROUND" + str(check_round) + ")")
         for team, team_info in self.teams.items():
             for system, sys_info in self.systems.items():
                 for check in sys_info['checks']:
@@ -74,7 +74,6 @@ class EngineModel(object):
                         sla += 1
                         down = 0
                 sla_totals[team][check] = sla
-        print("[SCORING] SLA TOTALS IS", sla_totals)
         return sla_totals, sla_log
 
     def calculate_scores(self, check_round):
@@ -135,25 +134,25 @@ class EngineModel(object):
 def start():
     em = EngineModel()
     em.load()
-    check_round = 0
 
-    #config = db.read_config()
-    #if "reset" in config["settings"] and config["settings"]["reset"] == 1:
-    db.reset_engine()
-    #elif db.check_db() == False:
-    #    db.reset_engine()
-    #else
-    #    check_round = db.get_check_round()
+    config = db.read_config()
+    if "reset" in config["settings"] and config["settings"]["reset"] == 1:
+        db.reset_engine()
 
     while True:
         em.load()
+        if "reset" in em.settings:
+            print("[INFO] 'reset' directive set, resetting.")
+            db.reset_engine()
+            em.load()
         running = em.settings['running']
         interval = em.settings['interval']
         jitter = em.settings['jitter']
         em.wait = 1
 
         if running == 1:
-            check_round += 1
+            check_round = db.get_check_round()
+            db.update_check_round(check_round + 1)
             em.check(check_round)
             em.wait = random.randint(-jitter, jitter) + interval
         elif running == 0:

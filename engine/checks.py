@@ -167,7 +167,7 @@ def check_http(ip, port, proto, host, path, checkfile, tolerance):
             if difference * 100 >= tolerance:
                 with open(tmpfile, "wb") as cf:
                     cf.write(content)
-                return (0, "Page differed too greatly. See file retrieved at " + tmpfile)
+                return (0, "Page differed too greatly. See file retrieved at /static/" + tmpfile)
         return (1, None)
     except Exception as e:
         return (0, str(e))
@@ -236,10 +236,12 @@ def check_dns(ip, port, query, query_type, answer):
     res.nameservers = [ip]
     try:
         print("[DEBUG-DNS] Reaching out to DNS for", ip)
-        query_answer = res.query(query, query_type).rrset[0]
+        query_answer = str(res.query(query, query_type).rrset[0])
         print("[DEBUG-DNS] DNS answered", query_answer)
         if answer != query_answer:
-            return (0, "DNS server returned incorrect answer to query.")
+            return (0, "DNS server returned incorrect answer " +\
+                        query_answer + " to query " + query +". Correct \
+                        answer was " + answer + ".")
         return (1, None)
     except Exception as e:
         return (0, e)

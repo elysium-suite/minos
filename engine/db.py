@@ -6,7 +6,8 @@ import time
 from datetime import datetime, timedelta
 
 # Database name
-db = "scoring.db"
+path = "/opt/minos/engine/"
+db = path + "scoring.db"
 
 #######################
 # DB HELPER FUNCTIONS #
@@ -84,9 +85,18 @@ def get_time_left():
 
 # Scoring
 
+def init_check_round():
+    execute("INSERT INTO `info` ('key', 'value') VALUES (?, ?)", \
+           ("check_round", 0))
+
 def get_check_round():
-    return execute("SELECT check_round FROM service_results \
-                ORDER BY time DESC", one=True)[0]
+    check_round = execute("SELECT value FROM info \
+                           WHERE key='check_round'", one=True)[0]
+    return int(check_round)
+
+def update_check_round(check_round):
+    execute("UPDATE info SET value=? \
+             WHERE key='check_round'", (check_round,), one=True)
 
 def get_service_check(team, check, check_round):
     try:
@@ -104,7 +114,6 @@ def get_service_checks(team, check):
     except Exception as e:
         print("[ERROR] Error occured in get_service_checks:", e)
         return False
-
 
 def get_service_latest():
     return execute("SELECT time FROM service_results \
@@ -129,40 +138,39 @@ def insert_totals_score(team, type, points):
     execute("INSERT INTO `totals` ('team', 'type', 'points') VALUES \
             (?, ?, ?)", (team, type, points))
 
-
 #############################
 # CONFIG READER AND WRITERS #
 #############################
 
 def copy_config():
-    print("[INFO] Loading config into running-config...")
-    with open('config.cfg', 'r') as f:
-        config = toml.load(f)
-    with open('running-config.cfg', 'w') as f:
-        toml.dump(config, f)
-
+    print("[INFO] Copying config into running-config...")
+    write_running_config(read_config())
 
 def read_config():
-    with open('config.cfg', 'r') as f:
+    with open(path + 'config.cfg', 'r') as f:
         config = toml.load(f)
     return config
 
 def read_running_config():
-    with open('running-config.cfg', 'r') as f:
-        config = toml.load(f)
+    try:
+        with open(path + 'running-config.cfg', 'r') as f:
+            config = toml.load(f)
+    except OSError:
+        print("[WARNING] File running-config.cfg not found.")
+        config = None
     return config
 
 def write_running_config(config):
-    with open('running-config.cfg', 'w') as f:
+    with open(path + 'running-config.cfg', 'w') as f:
         toml.dump(config, f)
 
 def stop_engine():
-    with open('running-config.cfg', 'r') as f:
-        config = toml.load(f)
-    with open('running-config.cfg', 'w') as f:
-        if "settings" in config:
-            config['settings']['running'] = 0
-            toml.dump(config, f)
+    config = read_running_config()
+    if config:
+        config['settings']['running'] = 0
+        write_running_config(config)
+    else:
+        print("[WARNING] No running-config.cfg, can't stop engine.")
 
 def start_engine():
     config = read_running_config()
@@ -171,8 +179,11 @@ def start_engine():
 
 def pause_engine():
     config = read_running_config()
-    config['settings']['running'] = 0
-    write_running_config(config)
+    if config:
+        config['settings']['running'] = 0
+        write_running_config(config)
+    else:
+        print("[WARNING] No running-config.cfg, can't pause engine.")
 
 def stop_engine():
     config = read_running_config()
@@ -181,13 +192,6 @@ def stop_engine():
 
 def reset_engine():
     pause_engine()
-    write()
-    set_start_time()
-    print("[INFO] Starting! Start time is", get_start_time())
-    start_engine()
-
-def write():
-    copy_config()
     print("[INIT] Resetting database...")
     reset()
 
@@ -208,9 +212,22 @@ def write():
         execute("INSERT INTO users (team, username, password, is_admin) \
             VALUES (?, ?, ?, ?)",  (None, user, pwhash, 1))
 
+    set_start_time()
+    print("[INFO] Starting! Start time is", get_start_time())
+
+    init_check_round()
+    print("[INFO] Set check round to", get_check_round())
+
+    copy_config()
+    start_engine()
+
 def load():
     print("[LOAD] Loading config into memory...")
     config = read_running_config()
+    if not config:
+        print("[INFO] No running config exists-- starting fresh.")
+        reset_engine()
+        config = read_running_config()
 
     settings = config['settings']
     teams = config['teams']

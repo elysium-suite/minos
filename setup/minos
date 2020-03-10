@@ -1,0 +1,53 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          minos
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Minos scoring engine
+### END INIT INFO
+
+start() {
+    cd /opt/minos/engine/
+    if [ "$2" == "logs" ]; then
+        start-stop-daemon -S -m -p /run/minos.pid -b -C -x "/usr/bin/python3" -- /opt/minos/engine/engine.py
+        start-stop-daemon -S -c www-data -b -C -x "/usr/local/bin/uwsgi" -- --ini /opt/minos/engine/etc/uwsgi.ini
+    else
+        start-stop-daemon -S -m -p /run/minos.pid -b -x "/usr/bin/python3" -- /opt/minos/engine/engine.py
+        start-stop-daemon -S -c www-data -b -x "/usr/local/bin/uwsgi" -- --ini /opt/minos/engine/etc/uwsgi.ini
+    fi
+}
+
+stop() {
+    start-stop-daemon -K --remove-pidfile -q -p /run/minos.pid
+    pkill python3 # I didn't want to have to do this lol
+    start-stop-daemon -K -q -p /opt/minos/engine/etc/uwsgi.pid
+    pkill uwsgi
+
+}
+
+case "$1" in
+    start)
+       start $@
+       ;;
+    stop)
+       stop
+       ;;
+    restart)
+      stop
+      start $@
+      ;;
+    status)
+       start-stop-daemon -T -p /run/minos.pid && engine="running" || engine="stopped"
+       start-stop-daemon -T -p /opt/minos/engine/etc/uwsgi.pid && web="running" || web="stopped"
+       echo "minos engine is $engine and web is $web"
+       start-stop-daemon -T --name nginx || echo "warning: nginx is not started"
+       ;;
+    *)
+       echo "Usage: $0 {start|stop|status}"
+       ;;
+esac
+
+exit 0

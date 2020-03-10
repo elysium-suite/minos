@@ -2,6 +2,36 @@
 
 This is a scoring engine meant to imitate the functionality of UTSA's CIAS CyberPatriot Scoring Engine with an emphasis on simplicity.  It acts as an uptime scorer (ex. your service has been up 50% of the time, and is down right now). It is based on DSU's DefSec Club [Scoring Engine](https://github.com/DSUDefSec/ScoringEngine). Named after the Greek myth of King Minos, judge of the dead.
 
+
+## Installation
+
+0. Clone the repository to your local computer and `cd` to the setup dir.
+```
+git clone https://github.com/sourque/minos && cd minos
+```
+1. Spin up an Ubuntu docker container.
+```
+DOCKER_ID=$(sudo docker run -v $(pwd):/opt/minos -p 80:80 -t -d ubuntu)
+```
+2. Interact with the machine and run the install script
+```
+sudo docker exec -it $DOCKER_ID "/bin/bash"
+cd /opt/minos/setup && ./install.sh
+```
+> If you don't want to use Docker, you can just move the repo to /opt/minos in an Ubuntu VM and run the install script. YMMV, has been tested on Ubuntu 18.10+.
+
+3. Put your config in `/opt/minos/config.cfg`.
+> Don't have a config? Copy over the example config with `cp /opt/minos/{example-,}config.cfg`.
+
+Start the engine with `service minos start`, or `service minos start logs` if you want to see the service logs. Web interface should be up at `http://localhost`.
+> You can stop the engine with `service minos stop`.
+
+By default, the configuration and database don't reset when you start the engine, as long as there is a currently existing `running-config.cfg`. Set the `"reset=1"` option in the `[settings]` directive to reset every time the engine launches.
+
+## Screenshot
+
+![Status Page](setup/imgs/status.png)
+
 ## Features
 
 - Uptime scoring engine
@@ -19,30 +49,6 @@ This is a scoring engine meant to imitate the functionality of UTSA's CIAS Cyber
 - CyberPatriot-esque scoring graphics and pages :)
 - (WIP) CSS Find-and-fix vulnerability leaderboard
 
-## Screenshots
-
-![Status Page](setup/imgs/status.png)
-
-## Installation
-
-> The engine is supported and tested on Ubuntu 18.04 and above. YMMV on other distributions.
-
-0. Clone this repository to `/opt/minos`.
-```
-cd /opt
-git clone https://github.com/sourque/minos
-```
-1. Run `setup/install.sh` as superuser.
-```
-sudo /opt/minos/setup/install.sh
-```
-2. Start/restart the engine.
-```
-sudo systemctl restart scoring_engine scoring_web
-```
-3. Browse to `http://localhost`.
-
-By default, the configuration and database don't reset when you start the engine, as long as there is a currently existing `running-config.cfg`. Set the `"reset=1"` flag in the `[settings]` directive to reset every time the engine launches.
 
 ## Scoring Engine Mechanics
 
@@ -57,18 +63,18 @@ By default, the configuration and database don't reset when you start the engine
 
 ## Configuration
 
-The configuration is in TOML (Tom's Obvious, Minimal Language). See farther below for details on how to configure each service. Here's a quick example, scoring one box for one team with one inject:
+The configuration is in TOML (Tom's Obvious, Minimal Language).
+
+The configuration is loaded from `config.cfg` the first time the scoring engine starts up, or every time if the `reset=1` option is set. You can manually re-read the config by logging in as an administrator, going to settings, and hitting `Reset`.
+
+Here's a quick example:
 
 ```
 [settings]
-running = 1
-interval = 150
+interval = 150 # Wait time between rounds is 150 +- 30 seconds
 jitter = 30
 revert_penalty = 350
-
-# Networking
-domain = "paradis.island"
-network = "172.16.{}.{}"
+network = "172.16.{}.{}" # Brackets are replaced by subnet, host
 
 [web_admins]
 white_team = "password"
@@ -80,33 +86,37 @@ white_team = "password"
     subnet = 10
 
 [systems]
-    [systems.calaneth]
+    [systems.coolsystem]
     host = 2
-    checks = [
-        "ssh",
-    ]
+    checks = [ "ssh", "http" ]
 
-        [systems.calaneth.ssh]
+        [systems.coolsystem.ssh]
         port = 2222
 
 [injects.1]
 time = "0:00"
 type = "service"
-enact_time = "0:30"
+enact_time = "0:30" # Time when service begins scoring
 title = "Add HTTPS to website"
 details = "Get HTTPS working on E-Commerce."
 
-    [injects.1.services.calaneth]
+    [injects.1.services.coolsystem]
     checks = [ "https",]
 
-         [injects.1.services.calaneth.https]
-         checkfile = "calaneth.html"
+         [injects.1.services.coolsystem.https]
+         checkfile = "cool_https.html"
 
+[injects.2]
+time = "0:05"
+type = "manual"
+title = "Intrusion report"
+details = "Deliver an intrusion report ASAP."
 ```
 
 ### Service Configuration
 
-The configuration is loaded automatically from `config.cfg` every time the scoring engine is started. The configuration is the same whether the service is scored at startup or later, through an inject. Inject services can be new or modify existing services (if the `modify="True"` flag is set under the services settings). Here are the checks and their properties:
+
+ The configuration for services is the same whether the service is scored at startup or later, through an inject. Inject services can be new or modify existing services (if the `modify="True"` flag is set under the services settings). Here are the checks and their properties:
 
 #### ssh
 ```
@@ -198,6 +208,7 @@ details = "Hello, please add the attached file to a new FTP server on Server3."
         file = "file.pdf"
         hash = "05ec7de5d536998263a73b5da698711f7bfffb58"
 ```
+> Put all your inject files in `/opt/minos/injectfiles`.
 - Manual: manually scored injects (ex. intrusion reports, memos, changelogs)
 ```
 [injects.1]
@@ -210,93 +221,8 @@ points = 500
 - Custom: (WIP) test for a condition in the client scoring engine
 
 
-
-### Detailed Example
-
-Here's an example, showing all the features of the engine:
-
-```
-[settings]
-
-# Scoring
-interval = 150
-jitter = 30
-revert_penalty = 350
-
-# Networking
-domain = "paradis.island"
-network = "172.16.{}.{}" # This is the subnet
-                         # First is team ip (ex. team1 --> 1)
-                         # Second is host ip (ex. calaneth --> 2)
-                         # So team1 calaneth is 172.16.1.2
-
-[web_admins]
-white_team = "password" # Username = "Password"
-
-[teams]
-    [teams.team1]
-    username = "team1"
-    password = "FalseThreat"
-    subnet = 10
-
-    [teams.team2]
-    username = "team2"
-    password = "TripleWater"
-    subnet = 2
-
-[systems]
-    [systems.calaneth]
-    host = 2
-    checks = [
-        "ssh",
-        "smtp",
-        "smb"
-    ]
-
-        [systems.calaneth.ssh]
-        port = 4000
-
-    [systems.krolva]
-    host = 4
-    checks = [
-        "ssh",
-        "smb"
-    ]
-
-        [systems.krolva.smb]
-        file="cool_titan_facts.txt"
-        hash="6867d56f355fec13a828ea65824745b1790715fb"
-
-    [systems.trost]
-    host = 3
-    checks = [
-        "ssh",
-        "smb"
-    ]          
-
-[injects.1]
-time = "0:00" # Inject will be posted at this time into the comp
-type = "service"
-enact_time = "0:30" # Service will start scoring at this time into the comp
-title = "Add HTTPS to website"
-details = "We need some extra security for our E-Commerce site. Please have HTTPS functional on the machine in thirty minutes."
-
-    [injects.1.services.krolva] # At the enact time, this service will begin scoring
-    checks = [ "https",]
-
-         [injects.1.services.krolva.https] # Same syntax as the normal services. Be careful not to make typos
-         checkfile = "krolva.html"
-
-[injects.2]
-time = "0:30"
-type = "manual"
-title = "Add the machine to the domain"
-details = "In order to effectively distribute our group policy, please add the last Windows machine to the paradis.island domain."
-points = "500"
-```
-
 ## Contributing and Disclaimer
 
-If you have anything you would like to add or fix, please make a pull request :) No improvement or fix is too small, and help is always appreciated.
+If you have anything you would like to add or fix, please make a pull request! No improvement or fix is too small, and help is always appreciated.
 
 This project is in no affiliated with or endorsed by the Air Force Association, University of Texas San Antonio, or the CyberPatriot program.
