@@ -9,7 +9,8 @@ import sys
 class EngineModel(object):
 
     def load(self):
-        self.settings, self.teams, self.systems, self.checks, self.injects = db.load()
+        self.settings, self.teams, self.systems, \
+        self.checks, self.injects = db.load()
 
     def check(self, check_round):
         self.calculate_scores(check_round)
@@ -26,7 +27,7 @@ class EngineModel(object):
                         type = check
                     ip = self.settings['network']. \
                         format(team_info['subnet'], sys_info['host'])
-                    thread = Thread(target=checker, args=(check_round, system, \
+                    thread = Thread(target=checker, args=(system, \
                         check, type, opts, team, ip))
                     thread.start()
 
@@ -35,18 +36,18 @@ class EngineModel(object):
         except: return "No checks completed yet."
 
     def status(self):
-        try: check_round = db.get_check_round()
-        except: check_round = 1
+        check_round = db.get_check_round()
         status = {}
         for team in self.teams:
             status[team] = {}
             for check in self.checks:
                 try: [(result, error, time)] = \
                      db.get_service_check(team, check, check_round)
-                except:
-                    try: [(result, error, time)] = \
-                         db.get_service_check(team, check, check_round-1)
-                    except: result, error, time = (2, "Pending.", "00:00")
+                except ValueError:
+                    try:
+                        [(result, error, time)] = \
+                            db.get_service_check(team, check, check_round - 1)
+                    except ValueError: result, error, time = (2, "Pending.", "00:00")
                 status[team][check] = (result, error, time)
         return status
 
@@ -66,7 +67,7 @@ class EngineModel(object):
             sla_totals[team] = {}
             for check in self.checks:
                 down, sla = 0, 0
-                for result, error, time in results[team][check]:
+                for result, error, time, check_round in results[team][check]:
                     if not result:
                         down += 1
                     if down >= 5:
@@ -75,6 +76,17 @@ class EngineModel(object):
                         down = 0
                 sla_totals[team][check] = sla
         return sla_totals, sla_log
+
+    def get_scores(self, check_round):
+        scores = {}
+        for team in self.teams:
+            scores[team] = []
+            for i in range(check_round):
+                scores[team].append([db.get_totals_score(team, "service", i), \
+                                db.get_totals_score(team, "sla", i), \
+                                db.get_totals_score(team, "css", i), \
+                                db.get_totals_score(team, "total", i)])
+        return scores
 
     def calculate_scores(self, check_round):
         results = self.results()
@@ -86,19 +98,20 @@ class EngineModel(object):
                 for check_result in check_results:
                     if check_result[0] == 1:
                         service_score += 1
-            db.insert_totals_score(team, "service", service_score)
+            db.insert_totals_score(team, "service", service_score, check_round)
 
             # SLA
             sla_points = 0
             for check in self.checks:
                 sla_points += -5 * sla_totals[team][check]
-            db.insert_totals_score(team, "sla", sla_points)
+            db.insert_totals_score(team, "sla", sla_points, check_round)
 
             # CSS Points
             css_points = 0
+            db.insert_totals_score(team, "css", css_points, check_round)
 
             # Total Points
-            db.insert_totals_score(team, "total", service_score + sla_points + css_points)
+            db.insert_totals_score(team, "total", service_score + sla_points + css_points, check_round)
 
     def check_injects(self):
         for title, inject in self.injects.items():
@@ -141,10 +154,6 @@ def start():
 
     while True:
         em.load()
-        if "reset" in em.settings:
-            print("[INFO] 'reset' directive set, resetting.")
-            db.reset_engine()
-            em.load()
         running = em.settings['running']
         interval = em.settings['interval']
         jitter = em.settings['jitter']
@@ -170,11 +179,11 @@ def start():
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         start()
-
-    # stop mechanism doesnt work, systemd just shoots the process
+    elif len(sys.argv) == 2 and sys.argv[1] == "start":
+        print("[CONF] Starting engine...")
+        db.start_engine()
     elif len(sys.argv) == 2 and sys.argv[1] == "stop":
         print("[CONF] Stopping engine...")
         db.stop_engine()
-
     else:
-         print("Usage: ./engine.py [stop]")
+         print("Usage: ./engine.py {start|stop}")

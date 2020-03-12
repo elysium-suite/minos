@@ -1,6 +1,8 @@
 import timeout_decorator
 import db
 
+path = "/opt/minos/"
+
 def gopt(varname, check_opts):
     try:
         if varname in check_opts:
@@ -9,7 +11,7 @@ def gopt(varname, check_opts):
     except:
         return None
 
-def checker(check_round, system, check, type, opts, team, ip):
+def checker(system, check, type, opts, team, ip):
     try:
         if type == "ssh":
             port = gopt('port', opts) or 22
@@ -69,7 +71,7 @@ def checker(check_round, system, check, type, opts, team, ip):
     except Exception as e:
         result, error = (0, e)
 
-    db.insert_service_score(check_round, team, system, check, result, error)
+    db.insert_service_score(db.get_check_round(), team, system, check, result, error)
 
 ###############
 # SSH Checker #
@@ -87,14 +89,13 @@ def check_ssh(ip, port, user, private_key):
         cli.set_missing_host_key_policy(client.AutoAddPolicy())
         if private_key and user:
             print("[DEBUG-SSH] Trying pubkey auth for", ip)
-            k = RSAKey.from_private_key_file("/opt/minos/engine/checkfiles/" + private_key)
+            k = RSAKey.from_private_key_file(path + "checkfiles/" + private_key)
             cli.connect(ip, port, user, banner_timeout=20, timeout=20, auth_timeout=20, pkey=k)
         else:
-            print("[DEBUG-SSH] Trying standard auth for", ip)
             cli.connect(ip, port, "root", "Password3#", banner_timeout=20, timeout=20, auth_timeout=20)
         cli.close()
         return 1, None
-    except (Exception, socket.error) as e:
+    except Exception as e:
         if str(e) == "Authentication failed." and not private_key:
             return 1, None
         return 0, str(e)
@@ -106,11 +107,13 @@ def check_ssh(ip, port, user, private_key):
 import subprocess
 import hashlib
 
+# TODO: replace with pysmb
+
 @timeout_decorator.timeout(20, use_signals=False)
 def check_smb(ip, port, anon, share, checkfile, filehash, domain):
     path = '//{}/{}'.format(ip, share)
     if checkfile and filehash:
-        tmpfile = "./tmpfiles/smb-%s-%s-%s-checkfile" % (share, ip, checkfile)
+        tmpfile = path + "tmpfiles/smb-%s-%s-%s-checkfile" % (share, ip, checkfile)
         cmd = 'get "{}" "{}"'.format(checkfile, tmpfile)
         smbcli = ['smbclient', "-N", path, '-c', cmd]
         if domain:
@@ -153,22 +156,24 @@ def check_http(ip, port, proto, host, path, checkfile, tolerance):
     tmpfile = "tmpfiles/%s-%s-%sresult" % (proto, ip, path)
     headers = {'Host': host}
     try:
-        print("[DEBUG-HTTP] Grabbing page for", ip)
         session = requests.Session()
         r = session.get(url, headers=headers, verify=False, allow_redirects=True)
         r.raise_for_status()
         content = str.encode(r.text)
         if checkfile:
-            with open("checkfiles/%s" % checkfile, 'rb') as f:
+            with open("/opt/minos/checkfiles/" + checkfile, 'rb') as f:
                 expected = f.read()
             seq = SequenceMatcher(None, expected, content)
-            difference = (100 - (seq.quick_ratio() * 100))
-            print("[DEBUG-HTTP] Difference between retrieved page and", checkfile, "is", difference, "while tolerance is", tolerance)
+            difference = round(100 - (seq.quick_ratio() * 100))
+            print("[DEBUG-HTTP] Difference between retrieved page and", \
+                   checkfile, "is", difference, "while tolerance is", tolerance)
             if difference * 100 >= tolerance:
-                with open(tmpfile, "wb") as cf:
+                with open("/opt/minos/engine/" + tmpfile, "wb") as cf:
                     cf.write(content)
-                return (0, "Page differed too greatly. See file retrieved at /static/" + tmpfile)
-        return (1, None)
+                return (0, "Page differed too greatly (difference " + \
+                            str(difference) + "%). See file \
+                            retrieved at /static/" + tmpfile)
+                return (1, None)
     except Exception as e:
         return (0, str(e))
 
@@ -182,7 +187,7 @@ import ftplib
 def check_ftp(ip, port, checkfile, filehash):
     ftp = ftplib.FTP()
     if checkfile and filehash:
-        tmpfile = "tmpfiles/%s-%s-%sresult" % (port, ip, checkfile)
+        tmpfile = path + "engine/tmpfiles/%s-%s-%sresult" % (port, ip, checkfile)
         try:
             print("[DEBUG-FTP] Trying anonymous login to grab file for", ip)
             ftp.connect(ip, int(port))
@@ -200,7 +205,6 @@ def check_ftp(ip, port, checkfile, filehash):
             return (0, e)
     else:
         try:
-            print("[DEBUG-FTP] Trying FTP connect for", ip)
             ftp.connect(ip, int(port))
             ftp.quit()
             return (1, "None")
@@ -235,7 +239,6 @@ def check_dns(ip, port, query, query_type, answer):
     res = resolver.Resolver()
     res.nameservers = [ip]
     try:
-        print("[DEBUG-DNS] Reaching out to DNS for", ip)
         query_answer = str(res.query(query, query_type).rrset[0])
         print("[DEBUG-DNS] DNS answered", query_answer)
         if answer != query_answer:

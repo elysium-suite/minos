@@ -6,8 +6,8 @@ import time
 from datetime import datetime, timedelta
 
 # Database name
-path = "/opt/minos/engine/"
-db = path + "scoring.db"
+path = "/opt/minos/"
+db = path + "engine/scoring.db"
 
 #######################
 # DB HELPER FUNCTIONS #
@@ -34,6 +34,13 @@ def execute(cmd, values=None, one=False):
 def get_uid(username):
     return execute("SELECT id FROM users WHERE username=?", \
                   (username,))[0][0]
+
+def engine_status():
+    config = read_running_config()
+    if config["settings"]["running"] == 1:
+        return True
+    else:
+        return False
 
 # Times
 
@@ -90,8 +97,11 @@ def init_check_round():
            ("check_round", 0))
 
 def get_check_round():
-    check_round = execute("SELECT value FROM info \
-                           WHERE key='check_round'", one=True)[0]
+    try:
+        check_round = execute("SELECT value FROM info \
+                               WHERE key='check_round'", one=True)[0]
+    except TypeError:
+        check_round = 0
     return int(check_round)
 
 def update_check_round(check_round):
@@ -99,16 +109,13 @@ def update_check_round(check_round):
              WHERE key='check_round'", (check_round,), one=True)
 
 def get_service_check(team, check, check_round):
-    try:
-        return execute("SELECT result, error, time \
-                         FROM service_results WHERE team=? AND name=? \
-                         AND check_round=?", (team, check, check_round))
-    except:
-        return False
+    return execute("SELECT result, error, time \
+                     FROM service_results WHERE team=? AND name=? \
+                     AND check_round=?", (team, check, check_round))
 
 def get_service_checks(team, check):
     try:
-        return execute("SELECT result, error, time FROM \
+        return execute("SELECT result, error, time, check_round FROM \
                 service_results WHERE team=? and name=? ORDER BY time DESC", \
                 (team, check))
     except Exception as e:
@@ -125,7 +132,7 @@ def get_service_points(team):
 
 def insert_service_score(check_round, team, system, check, result, error):
     if error:
-        error = re.sub('[^a-zA-Z.\d\s\/]', '', str(error))
+        error = re.sub('[^a-zA-Z.\d\s\/\-\%\(\)]', '', str(error))
     try:
         execute("INSERT INTO `service_results` ('check_round', 'team', 'name', \
                 'result', 'error') VALUES (?, ?, ?, ?, ?)", (check_round, team, \
@@ -134,9 +141,16 @@ def insert_service_score(check_round, team, system, check, result, error):
         print("[ERROR] Error couldn't be processed for", check, ":", error)
         error = "Error couldn't be processed:" + str(e)
 
-def insert_totals_score(team, type, points):
-    execute("INSERT INTO `totals` ('team', 'type', 'points') VALUES \
-            (?, ?, ?)", (team, type, points))
+def get_totals_score(team, type, check_round):
+    try:
+        return execute("SELECT points FROM `totals` WHERE team=? and type=? \
+                         and check_round=?", (team, type, check_round))[0][0]
+    except:
+        return 0
+
+def insert_totals_score(team, type, points, check_round):
+    execute("INSERT INTO `totals` ('team', 'type', 'points', 'check_round') VALUES \
+            (?, ?, ?, ?)", (team, type, points, check_round))
 
 #############################
 # CONFIG READER AND WRITERS #
@@ -153,7 +167,7 @@ def read_config():
 
 def read_running_config():
     try:
-        with open(path + 'running-config.cfg', 'r') as f:
+        with open(path + 'engine/running-config.cfg', 'r') as f:
             config = toml.load(f)
     except OSError:
         print("[WARNING] File running-config.cfg not found.")
@@ -161,7 +175,7 @@ def read_running_config():
     return config
 
 def write_running_config(config):
-    with open(path + 'running-config.cfg', 'w') as f:
+    with open(path + 'engine/running-config.cfg', 'w') as f:
         toml.dump(config, f)
 
 def stop_engine():
@@ -281,6 +295,7 @@ def reset():
     execute("DROP TABLE IF EXISTS `totals`;")
     execute("""CREATE TABLE `totals` (
                 `time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                `check_round` INTEGER,
                 `team` INTEGER,
                 `type` VARCHAR(255),
                 `points` INTEGER

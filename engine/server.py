@@ -27,7 +27,7 @@ def load_user(uid):
 
 @login_manager.unauthorized_handler
 def unauthorized():
-    return redirect(flask.url_for('login'))
+        return redirect(flask.url_for('login'))
 
 def is_safe_url(target):
     ref_url = urlparse(flask.request.host_url)
@@ -40,8 +40,11 @@ def is_safe_url(target):
 @app.route('/status')
 def status():
     em.load()
+    error = None
+    if not db.engine_status():
+        error = "Warning! Scoring engine backend is not running."
     return render_template('status.html', teams=em.teams, checks=em.checks, \
-        systems=em.systems, status=em.status(), latest=em.latest())
+        systems=em.systems, status=em.status(), latest=em.latest(), error=error)
 
 @app.route('/uptime')
 def uptime():
@@ -53,7 +56,7 @@ def uptime():
         percents[team] = {}
         for check in em.checks:
             total, passed = 0, 0
-            for result, error, time in results[team][check]:
+            for result, error, time, check_round in results[team][check]:
                 if result: passed += 1
                 total += 1
             if total == 0: percents[team][check] = -1
@@ -93,11 +96,11 @@ def clock():
 @app.route('/injects', methods=['GET', 'POST'])
 def injects():
     em.load()
-    pub_injects = {}
+    pub_injects = []
     for title, inject in em.injects.items():
         if db.get_current_time() > db.format_time(inject["time"]):
             print("[INFO] Posting inject", title)
-            pub_injects[title] = inject
+            pub_injects.append(inject)
     return render_template('injects.html', injects=em.injects, \
                             pub_injects=pub_injects)
 
@@ -121,17 +124,15 @@ def service():
     sla_totals, _ = em.get_slas()
     for team in em.teams:
         service_points = db.get_service_points(team)
-        print("[SCORING] Service points for team", team, "is", service_points)
         if service_points is not None:
             service_points = service_points[0]
         else:
             service_points = 0
-        print("SERVICE POINTS", service_points)
         for check in em.checks:
             service_points += sla_totals[team][check] * -5
         scores[team] = service_points
 
-    red_or_green = {} # Determines red or green color
+    red_or_green = {} # determines red or green color
     for team in em.teams:
         if scores[team] >= 0:
             red_or_green[team] = 1
@@ -156,21 +157,20 @@ def inject_scores():
     return("It'd be very convenient if there was some kind of inject scoring panel here.")
 
 @app.route('/scores/total')
-@login_required
-@admin_required
 def total():
-    return("TODO: Total scores (CSS, Service, Inject)")
+    em.load()
+    scores = em.get_scores(db.get_check_round())
+    print("SCORES IS", scores)
+    return render_template("scores_total.html", teams = em.teams, \
+                           scores=scores, check_round = db.get_check_round())
 
 @app.route('/settings', methods=['GET', 'POST'])
 @admin_required
 def settings():
     if request.method == "POST" and "action" in request.form and request.form["action"] == "Reset":
         print("[INFO] Resetting database from web GUI...")
-        db.pause_engine()
-        db.write()
-        db.set_start_time()
-        print("[INFO] Starting! Start time is", db.get_start_time())
-        db.start_engine()
+        db.reset_engine()
+        return redirect(flask.url_for('status'))
     return render_template("settings.html")
 
 @app.route('/scores/sla', methods=['GET'])

@@ -3,13 +3,9 @@
 
 {% block content %}
 <br/>
-{% if not errors is none %}
-    <div class="alert alert-{% if errors == '' %}success{% else %}danger{% endif %}" role="alert">
-        {% if errors == '' %}
-            Success!
-        {% else %}
+{% if errors %}
+    <div class="alert alert-danger" role="alert">
             {{ errors }}
-        {% endif %}
     </div>
 {% endif %}
 

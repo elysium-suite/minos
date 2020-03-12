@@ -45,7 +45,8 @@
                             {% if current_user.is_authenticated %}
                             <a class="dropdown-item" href="{{ url_for('sla') }}">SLA Penalties</a>
                             <a class="dropdown-item" href="{{ url_for('inject_scores') }}">Inject Scores</a>
-                            {% elif current_user.is_admin %}
+                            {% endif %}
+                            {% if current_user.is_admin %}
                             <a class="dropdown-item" href="{{ url_for('total') }}">Total Scores</a>
                             {% endif %}
 

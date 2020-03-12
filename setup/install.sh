@@ -58,11 +58,6 @@ echo -e "\n$plus Installing dependencies..."
 install_package python3
 install_package python3-pip
 install_package python3-dev
-#install_package libsasl2-dev
-#install_package freetds-dev
-#install_package libssl-dev
-#install_package libffi-dev
-#install_package libldap2-dev
 install_package freerdp2-x11
 install_package smbclient
 install_package nginx

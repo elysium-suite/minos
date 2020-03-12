@@ -19,7 +19,7 @@
     <thead>
 
         <tr>
-            <th>Timestamp</th>
+            <th>Round and Time</th>
             <th>Result</th>
             <th>Error</th>
         </tr>
@@ -29,6 +29,7 @@
         {% for result in results %}
         <tr>
             <td>
+            {{ result[3] }} ::
             {{ result[2] }}
             </td>
             {% if result[0] is equalto 1 %}
@@ -43,7 +44,7 @@
             <td>
                 {{ result[1] }}
             </td>
-        </tr>
+            </tr>
         {% endfor %}
     </tbody>
 </table>

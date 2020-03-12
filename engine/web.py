@@ -5,11 +5,10 @@ import bcrypt
 class WebModel(object):
 
     def load(self):
-        self.settings, self.teams, self.systems, self.checks, self.injects = db.load()
         self.users = {}
         for uid, team, name, pwhash, is_admin in db.execute("SELECT * FROM users"):
             self.users[uid] = User(uid, team, name, is_admin)
-            
+
     def change_pw(self, username, pw):
         pwhash = bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt())
         db.execute("UPDATE users SET password=? where username=?", (pwhash, username))
@@ -26,7 +25,6 @@ class User(UserMixin):
         self.team = team
         self.name = name
         self.is_admin = is_admin
-        
+
     def get_id(self):
         return chr(self.id)
-

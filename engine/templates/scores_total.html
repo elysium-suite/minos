@@ -1,24 +1,38 @@
+{% extends 'base.html' %}
+{% block scores %}active{% endblock %}
+{% block content %}
 
-<!-- 
+<style>
+#teamTotals {
+    margin-top: 20px;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.94)), url("/static/logo.png");
+    background-size: 100px;
+}
+</style>
+
+<h1>Total Scores</h1>
+<script type="text/javascript" src="/static/js/Chart.bundle-2.7.2.min.js"></script>
+<canvas id="teamTotals"></canvas><br>
+
+
 <script>
 
-var ctx = document.getElementById('scoreLineGraph').getContext('2d');
+function randomColor() {
+    return '#' + (Math.random().toString(16) + '0000000').slice(2, 8);
+}
+
+var ctx = document.getElementById('teamTotals').getContext('2d');
 var chart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: [{% for cr in range(crs) %}'{{ cr+1 }}'{{ "," if not loop.last }}{% endfor %}],
-        datasets: [
-        {% for tid, t in ts.items() %}
-        {% set c1 = (range(60, 255) | random) %}
-        {% set c2 = (range(60, 255) | random) %}
-        {% set c3 = (range(60, 255) | random) %}
-        {
-            label: '{{ t.name }}',
+        labels: [{% for i in range(check_round) %}'{{ i }}'{{ "," if not loop.last }}{% endfor %}],
+        datasets: [ {% for team in teams %} {
+            label: '{{ team }}',
             fill: false,
-            backgroundColor: 'rgb({{c1}}, {{c2}}, {{c3}})',
-            borderColor: 'rgb({{c1}}, {{c2}}, {{c3}})',
-            data: [{% for s in ss[tid] %}'{{s}}'{{ "," if not loop.last }}{% endfor %}]
-        }{{ "," if not loop.last }}
+            backgroundColor: '#FFFFFF',
+				  	borderColor: randomColor(),
+            data: [{% for i in range(check_round) %}{{ scores[team][i][3] }}{{ "," if not loop.last }}{% endfor %}]
+            }{{ "," if not loop.last }}
         {% endfor %}
         ]
     },
@@ -26,7 +40,7 @@ var chart = new Chart(ctx, {
     options: {
 		title: {
 			display: true,
-			text: 'Service Scores Over Time (Without SLA Violations)'
+			text: 'Total Scores'
 		},
 		scales: {
 		    xAxes: [{
@@ -34,26 +48,21 @@ var chart = new Chart(ctx, {
 			    scaleLabel: {
 				    display: true,
 				    labelString: 'Check Round'
-			    }
+			    },
+			    ticks: {
+			        beginAtZero: true
+		        }
 		    }],
 		    yAxes: [{
 			    display: true,
 			    scaleLabel: {
 				    display: true,
-				    labelString: 'Total Score'
+				    labelString: 'Score'
 			    }
 		    }]
 	    }
 	}
 });
-</script>
-{% endblock %}ript" src="/static/js/Chart.bundle-2.7.2.min.js"></script>
-<canvas id="scoreBarGraph"></canvas><br>
-<canvas id="scoreLineGraph"></canvas>
 
-<script>
-var ctx = document.getElementById('scoreBarGraph').getContext('2d');
-var chart = new Chart(ctx, {
-    type: 'horizontalBar',
-    data: {
-        labels: [{% for t in ts.values() %}'{{ t.name }}'{{ "," if not loop.last }}{% endfor %}],
+</script>
+{% endblock %}
