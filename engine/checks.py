@@ -167,13 +167,13 @@ def check_http(ip, port, proto, host, path, checkfile, tolerance):
             difference = round(100 - (seq.quick_ratio() * 100))
             print("[DEBUG-HTTP] Difference between retrieved page and", \
                    checkfile, "is", difference, "while tolerance is", tolerance)
-            if difference * 100 >= tolerance:
+            if difference >= tolerance:
                 with open("/opt/minos/engine/" + tmpfile, "wb") as cf:
                     cf.write(content)
                 return (0, "Page differed too greatly (difference " + \
-                            str(difference) + "%). See file \
-                            retrieved at /static/" + tmpfile)
-                return (1, None)
+                            str(difference) + "% tolerance " + str(tolerance) +\
+                             "%). See file retrieved at /static/" + tmpfile)
+            return (1, None)
     except Exception as e:
         return (0, str(e))
 

@@ -1,4 +1,5 @@
 config.cfg
+*/scoring.db
 */running-config.conf
 */uwsgi.pid
 */uwsgi.sock
