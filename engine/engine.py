@@ -133,15 +133,16 @@ class EngineModel(object):
                                         print("[ERROR] Duplicate check", check, "for", system, "without modify option")
                                         del checks["checks"][index]
                                 new_checks = config["systems"][system]["checks"] + checks["checks"]
-                                host_ip = config["systems"][system]["host"]
-                                config["systems"][system] = checks
+                                for propertyName, propertyValue in checks.items():
+                                    if propertyName != "checks":
+                                        config["systems"][system][propertyName] = propertyValue
                                 config["systems"][system]["checks"] = new_checks
-                                config["systems"][system]["host"] = host_ip
                             else:
                                 config["systems"][system] = checks
                             del config["injects"][title]["services"]
                 else:
                     config["injects"][title]["ran"] = 1
+
                 db.write_running_config(config)
 
 def start():

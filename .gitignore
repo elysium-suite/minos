@@ -1,8 +1,8 @@
 config.cfg
-*/scoring.db
-*/running-config.conf
-*/uwsgi.pid
-*/uwsgi.sock
+engine/scoring.db
+engine/running-config.cfg
+engine/etc/uwsgi.pid
+engine/etc/uwsgi.sock
 patch/*
 injectfiles/*
 checkfiles/*

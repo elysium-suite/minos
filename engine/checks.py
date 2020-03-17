@@ -34,7 +34,7 @@ def checker(system, check, type, opts, team, ip):
             else:
                 port = 80
             if gopt('proto', opts):
-                port = gopt('proto', opts)
+                proto = gopt('proto', opts)
             elif check == "https":
                 proto = "https"
             else:
@@ -171,9 +171,10 @@ def check_http(ip, port, proto, host, path, checkfile, tolerance):
                 with open("/opt/minos/engine/" + tmpfile, "wb") as cf:
                     cf.write(content)
                 return (0, "Page differed too greatly (difference " + \
-                            str(difference) + "% tolerance " + str(tolerance) +\
+                            str(difference) + "% tolerance " + str(tolerance) + \
                              "%). See file retrieved at /static/" + tmpfile)
             return (1, None)
+        return (1, None)
     except Exception as e:
         return (0, str(e))
 

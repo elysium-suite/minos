@@ -225,4 +225,4 @@ points = 500
 
 If you have anything you would like to add or fix, please make a pull request! No improvement or fix is too small, and help is always appreciated.
 
-This project is in no affiliated with or endorsed by the Air Force Association, University of Texas San Antonio, or the CyberPatriot program.
+This project is in no way affiliated with or endorsed by the Air Force Association, University of Texas San Antonio, or the CyberPatriot program.
