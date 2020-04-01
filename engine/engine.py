@@ -10,7 +10,7 @@ class EngineModel(object):
 
     def load(self):
         self.settings, self.teams, self.systems, \
-        self.checks, self.injects = db.load()
+        self.checks, self.injects, self.remote = db.load()
 
     def check(self, check_round):
         self.calculate_scores(check_round)
@@ -107,7 +107,7 @@ class EngineModel(object):
             db.insert_totals_score(team, "sla", sla_points, check_round)
 
             # CSS Points
-            css_points = 0
+            css_points = db.get_css_score()
             db.insert_totals_score(team, "css", css_points, check_round)
 
             # Total Points
@@ -145,36 +145,48 @@ class EngineModel(object):
 
                 db.write_running_config(config)
 
+    def verify_challenge(self, image_name, score, challenge):
+        return True
+
 def start():
-    em = EngineModel()
-    em.load()
+    config = db.read_running_config()
+    if not config or "reset" in config["settings"] and config["settings"]["reset"] == 1:
+            db.reset_engine()
+    config = db.read_running_config()
 
-    config = db.read_config()
-    if "reset" in config["settings"] and config["settings"]["reset"] == 1:
-        db.reset_engine()
+    if "css_mode" in config["settings"] and config["settings"]["css_mode"]:
+        print("[INFO] Scoring checks not running, engine is in CCS mode.")
+    else:
+        em = EngineModel()
+        while True:
+            em.load()
+            running = em.settings['running']
+            if "interval" in em.settings:
+                interval = em.settings['interval']
+            else:
+                interval = 150
+            if "jitter" in em.settings:
+                jitter = em.settings['jitter']
+            else:
+                jitter = 30
 
-    while True:
-        em.load()
-        running = em.settings['running']
-        interval = em.settings['interval']
-        jitter = em.settings['jitter']
-        em.wait = 1
+            em.wait = 1
 
-        if running == 1:
-            check_round = db.get_check_round()
-            db.update_check_round(check_round + 1)
-            em.check(check_round)
-            em.wait = random.randint(-jitter, jitter) + interval
-        elif running == 0:
-            print("[INFO] Scoring is paused.")
-        elif running == -1:
-            print("[INFO] Scoring has been stopped.")
-            return
-        else:
-            print("[ERROR] Unsure what 'running' is set to.")
+            if running == 1:
+                check_round = db.get_check_round()
+                db.update_check_round(check_round + 1)
+                em.check(check_round)
+                em.wait = random.randint(-jitter, jitter) + interval
+            elif running == 0:
+                print("[INFO] Scoring is paused.")
+            elif running == -1:
+                print("[INFO] Scoring has been stopped.")
+                return
+            else:
+                print("[ERROR] Unsure what 'running' is set to.")
 
-        print("[WAIT]", str(em.wait), "seconds")
-        time.sleep(em.wait)
+            print("[WAIT]", str(em.wait), "seconds")
+            time.sleep(em.wait)
 
 
 if __name__ == '__main__':

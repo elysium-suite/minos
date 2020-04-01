@@ -37,6 +37,13 @@ def is_safe_url(target):
 
 
 @app.route('/')
+def home():
+    em.load()
+    if "css_mode" in em.settings and em.settings["css_mode"] == True:
+        return redirect(flask.url_for('css'))
+    else:
+        return redirect(flask.url_for('status'))
+
 @app.route('/status')
 def status():
     em.load()
@@ -117,6 +124,15 @@ def patch():
                 tree['children'].append(dict(name=name))
     return render_template('patch.html', tree=tree)
 
+@app.route('/settings', methods=['GET', 'POST'])
+@admin_required
+def settings():
+    if request.method == "POST" and "action" in request.form and request.form["action"] == "Reset":
+        print("[INFO] Resetting database from web GUI...")
+        db.reset_engine()
+        return redirect(flask.url_for('status'))
+    return render_template("settings.html")
+
 @app.route('/scores/service')
 def service():
     em.load()
@@ -142,9 +158,66 @@ def service():
     return render_template("scores_service.html", teams = em.teams, scores = scores, \
                             rg = red_or_green)
 
-@app.route('/scores/css')
+@app.route('/scores/css', methods=['GET', 'POST'])
 def css():
-    return("TODO: CSS Scores")
+    em.load()
+    if "css_mode" in em.settings:
+        css_mode = em.settings["css_mode"]
+    else:
+        css_mode = None
+    if "event" in em.remote:
+        event = em.remote["event"]
+    else:
+        event = None
+    if "team" in request.args:
+        teams = db.get_css_teams(em.remote)
+        # TODO UNTRANSLATE ALIASES
+        if request.args["team"] in teams:
+            team_scores = db.get_css_score(request.args["team"], em.remote)
+            return ("Sorry! WIP.")
+            return render_template("scores_css_details.html")
+        else:
+            print("[ERROR] Invalid team specified.")
+    team_scores = db.get_css_scores(em.remote)
+    team_scores = db.apply_aliases(team_scores, em.remote)
+    if "team_aliases" in em.remote:
+        return render_template("scores_css.html", team_scores=team_scores, event=event, css_mode=css_mode)
+
+@app.route('/scores/css/update', methods=['POST'])
+def css_update():
+    em.load()
+    try:
+        # id must be unqiue for each VM to tell dupes (todo)
+        # id = requst.form["id"]
+        team = request.form["team"].rstrip().strip()
+        image = request.form["image"]
+        score = int(request.form["score"])
+        challenge = request.form["challenge"]
+    except:
+        print("[ERROR] Score update from image did not have all required fields, or had malformed fields.")
+        return("FAIL")
+    if not db.validate_alphanum(team) or not db.validate_alphanum(image):
+        print("[ERROR] Team or image contained illegal characters.")
+        return("FAIL")
+    if "teams" in em.remote:
+        if team not in em.remote["teams"]:
+            print("[ERROR] Score update had invalid team name.")
+            return("FAIL")
+    if "images" in em.remote:
+        if image not in em.remote["images"]:
+            print("[ERROR] Score update had invalid image name.")
+            return("FAIL")
+    if em.verify_challenge(image, score, challenge):
+        db.insert_css_score(team, image, score)
+        return("OK")
+    print("[ERROR] Score update from image did not pass challenge verification.")
+    return("FAIL")
+
+@app.route('/scores/css/status')
+def css_status():
+    em.load()
+    # time elapsed
+    return("pong + inject commands")
 
 @app.route('/scores/injects')
 def inject_scores():
@@ -160,18 +233,8 @@ def inject_scores():
 def total():
     em.load()
     scores = em.get_scores(db.get_check_round())
-    print("SCORES IS", scores)
     return render_template("scores_total.html", teams = em.teams, \
                            scores=scores, check_round = db.get_check_round())
-
-@app.route('/settings', methods=['GET', 'POST'])
-@admin_required
-def settings():
-    if request.method == "POST" and "action" in request.form and request.form["action"] == "Reset":
-        print("[INFO] Resetting database from web GUI...")
-        db.reset_engine()
-        return redirect(flask.url_for('status'))
-    return render_template("settings.html")
 
 @app.route('/scores/sla', methods=['GET'])
 @login_required

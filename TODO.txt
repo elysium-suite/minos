@@ -1,0 +1,9 @@
+
+services
+- pop3, imap, rdp
+
+remote
+ - message/challenge verification
+ - css details and graphs
+ - export to csv
+ - playtime and elapsed time

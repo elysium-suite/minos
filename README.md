@@ -2,7 +2,6 @@
 
 This is a scoring engine meant to imitate the functionality of UTSA's CIAS CyberPatriot Scoring Engine with an emphasis on simplicity.  It acts as an uptime scorer (ex. your service has been up 50% of the time, and is down right now). It is based on DSU's DefSec Club [Scoring Engine](https://github.com/DSUDefSec/ScoringEngine). Named after the Greek myth of King Minos, judge of the dead.
 
-
 ## Installation
 
 0. Clone the repository to your local computer and `cd` to the setup dir.
@@ -11,7 +10,7 @@ git clone https://github.com/sourque/minos && cd minos
 ```
 1. Spin up an Ubuntu docker container.
 ```
-DOCKER_ID=$(sudo docker run -v $(pwd):/opt/minos -p 80:80 -t -d ubuntu)
+DOCKER_ID=$(sudo docker run -v $(pwd):/opt/minos -p 80:80 -td ubuntu)
 ```
 2. Interact with the machine and run the install script
 ```
@@ -48,7 +47,6 @@ By default, the configuration and database don't reset when you start the engine
 - Timing-based injects and scoring
 - CyberPatriot-esque scoring graphics and pages :)
 - (WIP) CSS Find-and-fix vulnerability leaderboard
-
 
 ## Scoring Engine Mechanics
 
@@ -115,7 +113,6 @@ details = "Deliver an intrusion report ASAP."
 
 ### Service Configuration
 
-
  The configuration for services is the same whether the service is scored at startup or later, through an inject. Inject services can be new or modify existing services (if the `modify="True"` flag is set under the services settings). Here are the checks and their properties:
 
 #### ssh
@@ -168,8 +165,14 @@ file = "systemname.html" # Local checkfile to compare with
 ```
 [system.systemname.smtp]
 port = 1234 # Default 25
-testhost = localhost.lan # Server to declare yourself as. Default example.org
+testhost = "localhost.lan" # Server to declare yourself as. Default example.org
 ```
+
+#### pop
+Not supported yet.
+
+#### imap
+Not supported yet.
 
 #### dns
 ```
@@ -183,6 +186,40 @@ answer = "127.0.0.1" # Correct answer to query
 
 #### rdp
 Not supported yet.
+
+### CSS Configuration
+
+Any Client Scoring System reporting should work out of the box, albeit be less 'secure'.
+
+```
+[remote]
+
+# If specified, only these team IDs
+# will be allowed to connect and issue
+# score updates
+teams = [ "TEAM-12398fhn",
+          "TEAM-qwertyui" ]
+
+# If specified, replace the above team IDs
+# with the below aliases (one to one)
+# Note: aliases without team IDs above
+# will cause an error. A greater number
+# of aliases than teams will cause an error.
+# You can have more team IDs than aliases,
+# however.
+team_aliases = [ "team1",
+                 "team2" ]
+
+# If specified, only allow score updates
+# for the following image names
+images = [ "supercoolimage1",
+           "supercoolimage2" ]
+
+# Client will stop giving feedback
+# this time after the first time
+# connecting to the engine (total elapsed)
+time_limit = "6:00"
+```
 
 ## Patch Server
 
@@ -219,7 +256,6 @@ details = "Hello, please attach Server2 to the domain LocalDomain.lan."
 points = 500
 ```
 - Custom: (WIP) test for a condition in the client scoring engine
-
 
 ## Contributing and Disclaimer
 

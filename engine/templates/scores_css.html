@@ -1,0 +1,80 @@
+{% if css_mode %}
+    {% extends 'css_base.html' %}
+{% else %}
+    {% extends 'base.html' %}
+{% endif %}
+
+{% block head %}<meta http-equiv="refresh" content="15">{% endblock %}
+{% block content %}
+
+{% if css_mode %}
+    <style>
+    body {
+        background-color: #212529;
+    }
+    h2, h4 {
+        color: white;
+        font-weight: bold;
+        text-align: center;
+    }
+    nav {
+        background-color: #212529 !important;
+        color: black;
+    }
+    table.table {
+        width:75%;
+        margin: auto;
+        text-align: center;
+    }
+    td {
+        cursor: pointer;
+    }
+    </style>
+{% else %}
+    <style>
+    h2, h4 {
+        text-align: center;
+    }
+    table.table {
+        width:75%;
+        margin: auto;
+        text-align: center;
+    }
+    td {
+        cursor: pointer;
+    }
+    </style>
+{% endif %}
+<br/>
+
+    <h2>CSS Leaderboard</h2>
+    {% if event %}
+        <h4><i>{{ event }}</i></h4>
+    {% endif %}<br>
+    {% if css_mode %}
+    <table class="table table-borderless table-dark table-hover" id="revert-table">
+    {% else %}
+    <table class="table table-bordered table-hover" id="revert-table">
+    {% endif %}
+        <thead class="thead-dark">
+            <th>Team</th>
+            <th>Scored Images</th>
+            <th>Play Time</th>
+            <th>Current Score</th>
+        </thead>
+        <tbody>
+            {% for team in team_scores %}
+                <tr>
+                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[0] }}</td>
+                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[1] }}</td>
+                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[2] }}</td>
+                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[3] }}</td>
+                </tr>
+
+            {% endfor %}
+        </tbody>
+    </table>
+
+<br/><br/>
+
+{% endblock %}

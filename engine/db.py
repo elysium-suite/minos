@@ -29,7 +29,9 @@ def execute(cmd, values=None, one=False):
 # HUGE LIST OF DB FUNCTIONS #
 #############################
 
-# Startup/administrative
+##############
+# META FUNCS #
+##############
 
 def get_uid(username):
     return execute("SELECT id FROM users WHERE username=?", \
@@ -37,12 +39,14 @@ def get_uid(username):
 
 def engine_status():
     config = read_running_config()
-    if config["settings"]["running"] == 1:
+    if config and config["settings"]["running"] == 1:
         return True
     else:
         return False
 
-# Times
+##############
+# TIME FUNCS #
+##############
 
 time_format = "%Y-%m-%d %H:%M:%S"
 simple_time_format = "%H:%M:%S"
@@ -90,7 +94,9 @@ def get_time_left():
               - get_time_elapsed()
     return(time_left)
 
-# Scoring
+#################
+# SCORING FUNCS #
+#################
 
 def init_check_round():
     execute("INSERT INTO `info` ('key', 'value') VALUES (?, ?)", \
@@ -152,9 +158,108 @@ def insert_totals_score(team, type, points, check_round):
     execute("INSERT INTO `totals` ('team', 'type', 'points', 'check_round') VALUES \
             (?, ?, ?, ?)", (team, type, points, check_round))
 
+#################
+# CSS FUNCTIONS #
+#################
+
+def get_css_teams(remote):
+    if "teams" in remote:
+        teams = remote["teams"]
+    else:
+        ugly_teams = execute("SELECT DISTINCT `team` FROM `css_results`")
+        teams = []
+        for team in ugly_teams:
+            teams.append(team[0])
+    return teams
+
+def get_css_images(remote):
+    if "images" in remote:
+        images = remote["images"]
+    else:
+        ugly_images = execute("SELECT DISTINCT `image` FROM `css_results`")
+        images = []
+        for images in ugly_images:
+            images.append(images)
+    return images
+
+def get_css_scores(remote):
+    teams = get_css_teams(remote)
+    images = get_css_images(remote)
+    team_scores = []
+    for team in teams:
+        team_sum = 0
+        image_count = len(images)
+        for image in images:
+            try:
+                team_sum += execute("SELECT `points` FROM `css_results` WHERE team=? AND image=? ORDER BY time DESC", (team, image), one=True)[0]
+            except:
+                image_count -= 1 # Image not scored for all teams yet
+        team_scores.append((team, image_count, get_css_play_time(team), team_sum))
+    team_scores.sort(key=lambda tup: tup[0])
+    team_scores.reverse()
+    team_scores.sort(key=lambda tup: tup[1])
+    team_scores.sort(key=lambda tup: tup[2])
+    team_scores.reverse()
+    return(team_scores)
+
+def get_css_score(team, remote):
+    # get all cehcks for team x
+    # sort by time??
+    return([])
+    # get all checks for all images from team
+
+def get_css_elapsed_time(team):
+    try:
+        first_record = execute("SELECT `time` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,), one=True)[0]
+        start_time = datetime.strptime(first_record, "%Y-%m-%d %H:%M:%S")
+        last_record = execute("SELECT `time` FROM `css_results` WHERE team=? ORDER BY time DESC", (team,), one=True)[0]
+        end_time = datetime.strptime(last_record, "%Y-%m-%d %H:%M:%S")
+        time_elapsed = end_time.replace(microsecond=0) \
+                     - start_time.replace(microsecond=0)
+        return str(time_elapsed)
+    except:
+        return "0:00:00"
+
+def get_css_play_time(team):
+    try:
+        time_records = execute("SELECT `time` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
+        play_time = timedelta()
+        time_threshold = timedelta(seconds=300)
+        for index in range(len(time_records) - 1):
+            time1 = datetime.strptime(time_records[index][0], "%Y-%m-%d %H:%M:%S")
+            time2 = datetime.strptime(time_records[index + 1][0], "%Y-%m-%d %H:%M:%S")
+            time_diff = time2.replace(microsecond=0) \
+                      - time1.replace(microsecond=0)
+            if time_diff < time_threshold:
+                play_time += time_diff
+        return str(play_time)
+    except:
+        return "0:00:00"
+
+def insert_css_score(team, image, points):
+    execute("INSERT INTO `css_results` ('team', 'image', 'points') VALUES (?, ?, ?)", (team, image, points))
+
+def apply_aliases(team_scores, remote):
+    for score_index, team in enumerate(team_scores):
+        for index, team_id in enumerate(remote["teams"]):
+            if index >= len(remote["team_aliases"]):
+                break
+            if team_id == team[0]:
+                team_scores[score_index] = (remote["team_aliases"][index], team[1], team[2], team[3])
+    return team_scores
+
+def remove_aliases(team_scores, remote):
+    #TODO
+    return None
+
 #############################
 # CONFIG READER AND WRITERS #
 #############################
+
+def validate_alphanum(string):
+    if re.compile("^[a-zA-Z0-9-]+$").match(string):
+        return True
+    return False
 
 def copy_config():
     print("[INFO] Copying config into running-config...")
@@ -169,8 +274,10 @@ def read_running_config():
     try:
         with open(path + 'engine/running-config.cfg', 'r') as f:
             config = toml.load(f)
+        if "settings" not in config:
+            config["settings"] = {}
     except OSError:
-        print("[WARNING] File running-config.cfg not found.")
+        print("[WARN] File running-config.cfg not found.")
         config = None
     return config
 
@@ -180,11 +287,8 @@ def write_running_config(config):
 
 def stop_engine():
     config = read_running_config()
-    if config:
-        config['settings']['running'] = 0
-        write_running_config(config)
-    else:
-        print("[WARNING] No running-config.cfg, can't stop engine.")
+    config['settings']['running'] = 0
+    write_running_config(config)
 
 def start_engine():
     config = read_running_config()
@@ -209,15 +313,29 @@ def reset_engine():
     print("[INIT] Resetting database...")
     reset()
 
+    copy_config()
     config = read_config()
     print("[INIT] Reading config...")
 
+    if not "settings" in config:
+        config["settings"] = {}
+
     # Load teams and normal users
-    print("[INIT] Loading teams and users...")
-    for team, team_info in config['teams'].items():
-        pwhash = bcrypt.hashpw(team_info['password'].encode('utf-8'), bcrypt.gensalt())
-        execute("INSERT INTO users (team, username, password, is_admin) \
-            VALUES (?, ?, ?, ?)",  (team, team_info['username'], pwhash, 0))
+    if 'teams' in config:
+        print("[INIT] Loading teams and users...")
+        for team, team_info in config['teams'].items():
+            pwhash = bcrypt.hashpw(team_info['password'].encode('utf-8'), bcrypt.gensalt())
+            execute("INSERT INTO users (team, username, password, is_admin) \
+                VALUES (?, ?, ?, ?)",  (team, team_info['username'], pwhash, 0))
+    else:
+        print("[WARN] No teams found in configuration! Running into CCS mode.")
+        config['settings']['css_mode'] = True
+        write_running_config(config)
+
+    if not 'systems' in config:
+        print("[WARN] No systems found in configuration! Running into CCS mode.")
+        config['settings']['css_mode'] = True
+        write_running_config(config)
 
     # Load web admin
     print("[INIT] Loading web admins...")
@@ -232,7 +350,6 @@ def reset_engine():
     init_check_round()
     print("[INFO] Set check round to", get_check_round())
 
-    copy_config()
     start_engine()
 
 def load():
@@ -244,16 +361,29 @@ def load():
         config = read_running_config()
 
     settings = config['settings']
-    teams = config['teams']
-    systems = config['systems']
-    injects = config['injects']
+    if "teams" in config:
+        teams = config['teams']
+    else:
+        teams = {}
+    if "systems" in config:
+        systems = config['systems']
+    else:
+        systems = {}
+    if "injects" in config:
+        injects = config['injects']
+    else:
+        injects = {}
+    if "remote" in config:
+        remote = config["remote"]
+    else:
+        remote = []
 
     checks = []
     for system, sys_info in systems.items():
         for check in sys_info['checks']:
             checks.append(system + "-" + check)
 
-    return settings, teams, systems, checks, injects
+    return settings, teams, systems, checks, injects, remote
 
 def reset():
     execute("DROP TABLE IF EXISTS `info`;")
@@ -288,8 +418,8 @@ def reset():
     execute("DROP TABLE IF EXISTS `css_results`;")
     execute("""CREATE TABLE `css_results` (
                 `time` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                `team` INTEGER,
-                `system` INTEGER,
+                `team` VARCHAR(255),
+                `image` VARCHAR(255),
                 `points` INTEGER
             );""")
     execute("DROP TABLE IF EXISTS `totals`;")
