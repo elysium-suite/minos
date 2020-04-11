@@ -88,7 +88,10 @@ def get_time_elapsed():
     return(time_elapsed)
 
 def get_time_left():
-    duration = read_config()["settings"]["duration"]
+    try:
+        duration = read_config()["settings"]["duration"]
+    except:
+        duration = "3:30"
     hours, minutes = list(map(int, duration.split(":")))
     time_left = timedelta(hours=hours, minutes=minutes, seconds=00) \
               - get_time_elapsed()
@@ -178,8 +181,8 @@ def get_css_images(remote):
     else:
         ugly_images = execute("SELECT DISTINCT `image` FROM `css_results`")
         images = []
-        for images in ugly_images:
-            images.append(images)
+        for image in ugly_images:
+            images.append(image[0])
     return images
 
 def get_css_scores(remote):
@@ -197,16 +200,89 @@ def get_css_scores(remote):
         team_scores.append((team, image_count, get_css_play_time(team), team_sum))
     team_scores.sort(key=lambda tup: tup[0])
     team_scores.reverse()
-    team_scores.sort(key=lambda tup: tup[1])
     team_scores.sort(key=lambda tup: tup[2])
+    team_scores.reverse()
+    team_scores.sort(key=lambda tup: tup[3])
     team_scores.reverse()
     return(team_scores)
 
 def get_css_score(team, remote):
-    # get all cehcks for team x
-    # sort by time??
-    return([])
-    # get all checks for all images from team
+    image_data = {}
+
+    # Get all scores from one team
+    try:
+        team_scores = execute("SELECT `time`, `image`, `points`, `vulns` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
+        print("TEAM SCORES IS", team_scores)
+        current_block = datetime.strptime(team_scores[0][0], "%Y-%m-%d %H:%M:%S")
+    except:
+        return [], {}, {}
+
+    current_delta = timedelta()
+    block_threshold = timedelta(seconds=180)
+
+    # Push starting block
+    labels = []
+    print("PUSHING STARTING BLOCK")
+    labels.append(datetime.strftime(current_block, simple_time_format))
+    scores = {}
+    current_scores = {}
+
+    for index, score_data in enumerate(team_scores):
+        score_time = datetime.strptime(score_data[0], "%Y-%m-%d %H:%M:%S")
+        print("SCORE TIME IS", score_time)
+        time_diff = score_time.replace(microsecond=0) \
+                  - current_block.replace(microsecond=0)
+        print("TIME DIFF IS", time_diff)
+        print("SCORES IS", scores)
+        if time_diff > block_threshold:
+            print("=== SCORE PUSH TRIGGERED ===")
+            for image, img_score in current_scores.items():
+                if image in scores:
+                    print("APPENDING SCORE:", img_score)
+                    scores[image].append((datetime.strftime(current_block, simple_time_format), img_score))
+                else:
+                    print("CREATING NEW SCORE:", img_score)
+                    scores[image] = [(datetime.strftime(current_block, simple_time_format), img_score)]
+            current_scores = {}
+            while time_diff > block_threshold:
+                labels.append(datetime.strftime(current_block, simple_time_format))
+                current_block += block_threshold
+                time_diff = score_time.replace(microsecond=0) \
+                          - current_block.replace(microsecond=0)
+        print("SETTING SCORE", score_data[2])
+        current_scores[score_data[1]] = score_data[2]
+        if score_data[1] in image_data:
+            image_data[score_data[1]][3] = score_data[2]
+            image_data[score_data[1]][4] = score_data[3]
+        else:
+            print("SETTING NEW VULSN TO", score_data[3])
+            image_data[score_data[1]] = [get_css_play_time(team, image=score_data[1]), 0, 0, score_data[2], score_data[3]]
+
+    print("=== END SCORE PUSH ===")
+    labels.append(datetime.strftime(current_block, simple_time_format))
+    for image, img_score in current_scores.items():
+        if image in scores:
+            scores[image].append((datetime.strftime(current_block, simple_time_format), img_score))
+        else:
+            scores[image] = [(datetime.strftime(current_block, simple_time_format), img_score)]
+
+    print("LABELS IS", labels)
+
+    for image in image_data.values():
+        try:
+            image[4] = bytes.fromhex(image[4])
+            image[4] = image[4].decode("ascii")
+            vuln_info = image[4].split("|")
+            image[1] = vuln_info[0]
+            image[2] = vuln_info[1]
+            if vuln_info[-1] == "":
+                image[4] = "|".join(vuln_info[2:-1])
+            else:
+                image[4] = "|".join(vuln_info[2:])
+        except Exception as e:
+            print("[ERROR] Error decoding hex vulns from databases! (" + str(e) + ")")
+
+    return(labels, image_data, scores)
 
 def get_css_elapsed_time(team):
     try:
@@ -220,9 +296,12 @@ def get_css_elapsed_time(team):
     except:
         return "0:00:00"
 
-def get_css_play_time(team):
+def get_css_play_time(team, image=None):
     try:
-        time_records = execute("SELECT `time` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
+        if not image:
+            time_records = execute("SELECT `time` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
+        else:
+            time_records = execute("SELECT `time` FROM `css_results` WHERE team=? and image=? ORDER BY time ASC", (team, image))
         play_time = timedelta()
         time_threshold = timedelta(seconds=300)
         for index in range(len(time_records) - 1):
@@ -236,8 +315,8 @@ def get_css_play_time(team):
     except:
         return "0:00:00"
 
-def insert_css_score(team, image, points):
-    execute("INSERT INTO `css_results` ('team', 'image', 'points') VALUES (?, ?, ?)", (team, image, points))
+def insert_css_score(team, image, points, vulns):
+    execute("INSERT INTO `css_results` ('team', 'image', 'points', 'vulns') VALUES (?, ?, ?, ?)", (team, image, points, vulns))
 
 def apply_aliases(team_scores, remote):
     for score_index, team in enumerate(team_scores):
@@ -246,15 +325,29 @@ def apply_aliases(team_scores, remote):
                 break
             if team_id == team[0]:
                 team_scores[score_index] = (remote["team_aliases"][index], team[1], team[2], team[3])
+
     return team_scores
 
-def remove_aliases(team_scores, remote):
-    #TODO
-    return None
+def remove_alias(team, remote):
+    for index, team_id in enumerate(remote["team_aliases"]):
+        if team_id == team:
+            print("removing alias", team," to", remote["teams"][index])
+            return remote["teams"][index]
+    return team
 
 #############################
 # CONFIG READER AND WRITERS #
 #############################
+
+def printAsHex(text):
+    return ''.join(format(x, '02x') for x in text)
+
+def xor(a, b):
+    xored = []
+    for i in range(max(len(a), len(b))):
+        xored_value = ord(a[i%len(a)]) ^ ord(b[i%len(b)])
+        xored.append(xored_value)
+    return bytes(xored)
 
 def validate_alphanum(string):
     if re.compile("^[a-zA-Z0-9-]+$").match(string):
@@ -420,6 +513,7 @@ def reset():
                 `time` DATETIME DEFAULT CURRENT_TIMESTAMP,
                 `team` VARCHAR(255),
                 `image` VARCHAR(255),
+                `vulns` VARCHAR(2048),
                 `points` INTEGER
             );""")
     execute("DROP TABLE IF EXISTS `totals`;")

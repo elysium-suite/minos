@@ -4,6 +4,10 @@
     {% extends 'base.html' %}
 {% endif %}
 
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
+{% endblock %}
+
 {% block content %}
 
 {% if css_mode %}
@@ -11,7 +15,7 @@
     body {
         background-color: #212529;
     }
-    h2, h4 {
+    h2, h4, h5, h6 {
         color: white;
         font-weight: bold;
         text-align: center;
@@ -24,9 +28,6 @@
         width:75%;
         margin: auto;
         text-align: center;
-    }
-    td {
-        cursor: pointer;
     }
     </style>
 {% else %}
@@ -46,34 +47,139 @@
 {% endif %}
 <br/>
 
-    <h2>CSS Leaderboard</h2>
-    {% if event %}
-        <h4><i>{{ event }}</i></h4>
-    {% endif %}<br>
+    <h2>Leaderboard</h2><br>
+    <h2>{{ team_name }}</h2><br>
+
+    <!-- Team info -->
     {% if css_mode %}
-    <table class="table table-borderless table-dark table-hover" id="revert-table">
+    <table class="table table-borderless table-dark table-striped">
     {% else %}
-    <table class="table table-bordered table-hover" id="revert-table">
+    <table class="table table-bordered table-hover">
     {% endif %}
         <thead class="thead-dark">
-            <th>Team</th>
-            <th>Scored Images</th>
+            <th>Elapsed Time</th>
             <th>Play Time</th>
-            <th>Current Score</th>
+            <th>Total Score</th>
         </thead>
         <tbody>
-            {% for team in team_scores %}
-                <tr>
-                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[0] }}</td>
-                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[1] }}</td>
-                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[2] }}</td>
-                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[3] }}</td>
-                </tr>
+            <tr>
+                <td>{{ team_info[0] }}</td>
+                <td>{{ team_info[1] }}</td>
+                <td>{{ team_info[2] }}</td>
+            </tr>
+        </tbody>
+    </table>
 
+    <!-- Current image scores -->
+    <br><h4>Current Image Scores</h4><br>
+    {% if css_mode %}
+    <table class="table table-borderless table-dark table-striped">
+    {% else %}
+    <table class="table table-bordered table-hover">
+    {% endif %}
+        <thead class="thead-dark">
+            <th>Image Name</th>
+            <th>Play Time</th>
+            <th>Vulns Found</th>
+            <th>Total Vulns</th>
+            <th>Score</th>
+        </thead>
+        <tbody>
+            {% for image, score_info in image_data.items() %}
+                <tr>
+                    <td>{{ image }}</td>
+                    <td>{{ score_info[0] }}</td>
+                    <td>{{ score_info[1] }}</td>
+                    <td>{{ score_info[2] }}</td>
+                    <td>{{ score_info[3] }}</td>
+                </tr>
             {% endfor %}
         </tbody>
     </table>
 
-<br/><br/>
+    <!-- Graph of scores over time -->
+    <br><br><h4>Scores Over Time</h4><br>
+    <canvas id="scoresOverTime" height="100%"></canvas>
+
+    <script>
+		var config = {
+			type: 'line',
+			data: {
+				labels: [{% for label in labels %}'{{ label }}'{{ "," if not loop.last }}{% endfor %}],
+				datasets: [
+                {% for image in scores %}
+                {
+					label: '{{ image }}',
+					backgroundColor: 'rgb(255, 255, 255)',
+				    borderColor: 'rgb(255, 255, 255)',
+
+                    data: [
+                    {% for time, score in scores[image] %}
+                        {x: '{{ time }}', y: {{ score }} } {{ "," if not loop.last }}
+                    {% endfor %}
+					],
+					fill: false,
+				}
+                {{ "," if not loop.last }}
+                {% endfor %}
+                ]
+			},
+			options: {
+				responsive: true,
+				scales: {
+					xAxes: [{
+						scaleLabel: {
+							labelString: 'Time'
+						}
+					}],
+					yAxes: [{
+						scaleLabel: {
+							labelString: 'Score'
+						},
+                        ticks: {
+                            beginAtZero: true,
+                            maxTicksLimit: 5,
+                            stepSize: 1
+                        }
+					}]
+				}
+			}
+		};
+
+		window.onload = function() {
+			var ctx = document.getElementById('scoresOverTime').getContext('2d');
+			window.myLine = new Chart(ctx, config);
+		};
+
+        </script>
+
+
+{% if current_user.is_admin %}
+
+    <!-- Graph of scores over time -->
+    <br><br><h4>Vulnerabilities</h4><br>
+    {% for image, score_info in image_data.items() %}
+
+    {% if css_mode %}
+    <table class="table table-borderless table-dark table-striped">
+    {% else %}
+    <table class="table table-bordered table-hover">
+    {% endif %}
+        <thead class="thead-dark">
+            <th>{{ image }}</th>
+        </thead>
+        <tbody>
+            {% set vuln_list = score_info[4].split('|') %}
+            {% for vuln_row in vuln_list %}
+            <tr>
+                <td>{{ vuln_row }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    {% endfor %}
+{% endif %}
+<br><br>
 
 {% endblock %}

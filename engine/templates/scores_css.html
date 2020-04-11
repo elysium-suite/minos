@@ -12,10 +12,13 @@
     body {
         background-color: #212529;
     }
-    h2, h4 {
+    h2, h4, h6 {
         color: white;
         font-weight: bold;
         text-align: center;
+    }
+    a, a:hover {
+        color: white;
     }
     nav {
         background-color: #212529 !important;
@@ -47,14 +50,17 @@
 {% endif %}
 <br/>
 
-    <h2>CSS Leaderboard</h2>
+    <h2>Leaderboard</h2>
+    {% if current_user.is_admin %}
+        <h6><a href="/scores/css/export"><i>Export CSV</i></a></h6>
+    {% endif %}
     {% if event %}
         <h4><i>{{ event }}</i></h4>
     {% endif %}<br>
     {% if css_mode %}
-    <table class="table table-borderless table-dark table-hover" id="revert-table">
+    <table class="table table-borderless table-dark table-hover">
     {% else %}
-    <table class="table table-bordered table-hover" id="revert-table">
+    <table class="table table-bordered table-hover">
     {% endif %}
         <thead class="thead-dark">
             <th>Team</th>

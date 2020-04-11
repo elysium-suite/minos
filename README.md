@@ -194,6 +194,10 @@ Any Client Scoring System reporting should work out of the box, albeit be less '
 ```
 [remote]
 
+# If specified, incoming score reports
+# will be decrypted with this key
+password = "HackersArentReal"
+
 # If specified, only these team IDs
 # will be allowed to connect and issue
 # score updates
@@ -215,9 +219,8 @@ team_aliases = [ "team1",
 images = [ "supercoolimage1",
            "supercoolimage2" ]
 
-# Client will stop giving feedback
-# this time after the first time
-# connecting to the engine (total elapsed)
+# If specified, client will stop giving
+# feedback after this elapsed time
 time_limit = "6:00"
 ```
 

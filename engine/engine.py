@@ -1,5 +1,7 @@
 from threading import Thread
 from checks import checker
+from Crypto.Cipher import AES
+from hashlib import sha256
 import sqlite3 as sql
 import time, random
 import db
@@ -145,8 +147,39 @@ class EngineModel(object):
 
                 db.write_running_config(config)
 
-    def verify_challenge(self, image_name, score, challenge):
-        return True
+    def verify_challenge(self, challenge, password=None):
+        randomHash1 = "71844fd161e20dc78ce6c985b42611cfb11cf196"
+        randomHash2 = "e31ad5a009753ef6da499f961edf0ab3a8eb6e5f"
+        chalString = db.printAsHex(db.xor(randomHash1, randomHash2))
+        if password:
+            key = db.printAsHex(sha256(password.encode()).digest())
+            chalString = db.printAsHex(db.xor(chalString, key))
+        if chalString == challenge:
+            print("[INFO] Challenge string from score update was correct!")
+            return True
+        else:
+            return False
+
+    def decrypt_vulns(self, vulns, password=None):
+        vulns = bytes.fromhex(vulns)
+
+        if password:
+            try:
+                key = sha256(password.encode()).digest()
+                iv = vulns[:12]
+                mac = vulns[len(vulns)-16:]
+                ciphertext = vulns[12:len(vulns)-16]
+                cipher = AES.new(key, AES.MODE_GCM, nonce=iv)
+                vulns = cipher.decrypt_and_verify(ciphertext, mac)
+                vulns = vulns.decode("ascii").strip().rstrip()
+            except:
+                print("[ERROR] Failed to decrypt client traffic.")
+                return "", False
+        else:
+            vulns = vulns.decode("ascii")
+
+        vulns = vulns.split("|")
+        return vulns, True
 
 def start():
     config = db.read_running_config()

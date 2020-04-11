@@ -171,28 +171,38 @@ def css():
         event = None
     if "team" in request.args:
         teams = db.get_css_teams(em.remote)
-        # TODO UNTRANSLATE ALIASES
-        if request.args["team"] in teams:
-            team_scores = db.get_css_score(request.args["team"], em.remote)
-            return ("Sorry! WIP.")
-            return render_template("scores_css_details.html")
+        team = request.args["team"]
+        team_name = team
+        if not team in teams:
+            team = db.remove_alias(request.args["team"], em.remote)
+        if team in teams:
+            labels, image_data, scores = db.get_css_score(request.args["team"], em.remote)
+            total_score = 0
+            for image in image_data.values():
+                total_score += image[3]
+            team_info = (db.get_css_elapsed_time(team), \
+
+                         db.get_css_play_time(team), \
+                         total_score)
+            return render_template("scores_css_details.html", labels=labels, team_name=team_name, team_info=team_info, image_data=image_data, scores=scores, css_mode=css_mode)
         else:
-            print("[ERROR] Invalid team specified.")
+            print("[ERROR] Invalid team specified:", request.args["team"])
     team_scores = db.get_css_scores(em.remote)
-    team_scores = db.apply_aliases(team_scores, em.remote)
     if "team_aliases" in em.remote:
-        return render_template("scores_css.html", team_scores=team_scores, event=event, css_mode=css_mode)
+        team_scores = db.apply_aliases(team_scores, em.remote)
+    return render_template("scores_css.html", team_scores=team_scores, event=event, css_mode=css_mode)
 
 @app.route('/scores/css/update', methods=['POST'])
 def css_update():
     em.load()
     try:
-        # id must be unqiue for each VM to tell dupes (todo)
-        # id = requst.form["id"]
         team = request.form["team"].rstrip().strip()
         image = request.form["image"]
         score = int(request.form["score"])
         challenge = request.form["challenge"]
+        vulns = request.form["vulns"]
+        # id must be unqiue for each VM to tell dupes (todo)
+        id = request.form["id"]
     except:
         print("[ERROR] Score update from image did not have all required fields, or had malformed fields.")
         return("FAIL")
@@ -207,10 +217,27 @@ def css_update():
         if image not in em.remote["images"]:
             print("[ERROR] Score update had invalid image name.")
             return("FAIL")
-    if em.verify_challenge(image, score, challenge):
-        db.insert_css_score(team, image, score)
+    config = db.read_running_config()
+    if "remote" in config and "password" in config["remote"]:
+        config_password = config["remote"]["password"]
+        if em.verify_challenge(challenge, password=config_password):
+            vulns, success = em.decrypt_vulns(vulns, password=config_password)
+        else:
+            print("[ERROR] Score update from image did not pass (password-protected) challenge verification.")
+            return("FAIL")
+    else:
+        if em.verify_challenge(challenge):
+            vulns, success = em.decrypt_vulns(vulns)
+        else:
+            print("[ERROR] Score update from image did not pass (passwordless) challenge verification.")
+            return("FAIL")
+    if success:
+        vulns = db.printAsHex("|".join(vulns).encode())
+        db.insert_css_score(team, image, score, vulns)
         return("OK")
-    print("[ERROR] Score update from image did not pass challenge verification.")
+    else:
+        print("[ERROR] Vuln data decryption failed.")
+        return("FAIL")
     return("FAIL")
 
 @app.route('/scores/css/status')
@@ -259,9 +286,10 @@ def login():
             login_user(user)
             flask.flash('Logged in successfully!')
             next = flask.request.args.get('next')
-            if not is_safe_url(next): # Open redirect protection
+            # Open redirect protection
+            if not is_safe_url(next):
                 return flask.abort(400)
-            return redirect(next or flask.url_for('status'))
+            return redirect(next or flask.url_for("home"))
         else:
             error = "Invalid username or password."
     return render_template('login.html', form=form, error=error)
@@ -270,4 +298,4 @@ def login():
 @login_required
 def logout():
     logout_user()
-    return redirect(flask.url_for('status'))
+    return redirect(flask.url_for('home'))

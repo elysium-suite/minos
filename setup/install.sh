@@ -61,7 +61,7 @@ install_package python3-dev
 install_package freerdp2-x11
 install_package smbclient
 install_package nginx
-pip3 install -U dnspython pysmb paramiko requests timeout-decorator toml
+pip3 install -U dnspython pysmb paramiko requests timeout-decorator toml pycryptodome
 pip3 install -U Flask flask_login flask-wtf bcrypt uwsgi
 
 echo -e "$plus Configuring nginx..."

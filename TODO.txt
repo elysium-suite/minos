@@ -4,6 +4,6 @@ services
 
 remote
  - message/challenge verification
- - css details and graphs
+ - status/time checks
  - export to csv
- - playtime and elapsed time
+ - list ips and history at the bottom of graph ? kinda privacy violation
