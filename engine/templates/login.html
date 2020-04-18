@@ -1,6 +1,25 @@
-{% extends 'base.html' %}
+{% if css_mode %}
+    {% extends 'css_base.html' %}
+{% else %}
+    {% extends 'base.html' %}
+{% endif %}
 
 {% block content %}
+{% if css_mode %}
+    <style>
+    body {
+        background-color: #212529;
+    }
+    h1, label {
+        color: white;
+        font-weight: bold;
+    }
+    nav {
+        background-color: #212529 !important;
+        color: black;
+    }
+    </style>
+{% endif %}
 <div class="col-sm-4 offset-sm-4">
     <br>
     <h1>Login</h1>

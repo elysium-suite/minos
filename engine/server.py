@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 from urllib.parse import urlparse, urljoin
 from decorators import admin_required
 from web import *
 from forms import *
+from io import BytesIO
 import engine
 import flask
 import db
@@ -160,6 +161,7 @@ def service():
 
 @app.route('/scores/css', methods=['GET', 'POST'])
 def css():
+    print("1")
     em.load()
     if "css_mode" in em.settings:
         css_mode = em.settings["css_mode"]
@@ -170,14 +172,18 @@ def css():
     else:
         event = None
     if "team" in request.args:
+        print("2")
         teams = db.get_css_teams(em.remote)
         team = request.args["team"]
         team_name = team
+        print("3")
         if not team in teams:
             team = db.remove_alias(request.args["team"], em.remote)
+        print("4")
         if team in teams:
-            labels, image_data, scores = db.get_css_score(request.args["team"], em.remote)
+            labels, image_data, scores = db.get_css_score(team, em.remote)
             total_score = 0
+            print("5")
             for image in image_data.values():
                 total_score += image[3]
             team_info = (db.get_css_elapsed_time(team), \
@@ -246,6 +252,16 @@ def css_status():
     # time elapsed
     return("pong + inject commands")
 
+@app.route('/scores/css/export')
+def css_csv():
+    em.load()
+    csv_buffer = BytesIO()
+    csv_buffer.write(db.get_css_csv(em.remote))
+    csv_buffer.seek(0)
+    return send_file(csv_buffer, as_attachment=True,
+                     attachment_filename='score_report.csv',
+                     mimetype='text/csv')
+
 @app.route('/scores/injects')
 def inject_scores():
     if request.method == 'POST':
@@ -277,8 +293,13 @@ def team_page():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    em.load()
     form = LoginForm(wm)
     error = None
+    if "css_mode" in em.settings:
+        css_mode = em.settings["css_mode"]
+    else:
+        css_mode = None
     if request.method == 'POST':
         if form.validate_on_submit():
             uid = db.get_uid(form.username.data)
@@ -292,7 +313,7 @@ def login():
             return redirect(next or flask.url_for("home"))
         else:
             error = "Invalid username or password."
-    return render_template('login.html', form=form, error=error)
+    return render_template('login.html', form=form, error=error, css_mode=css_mode)
 
 @app.route('/logout')
 @login_required
