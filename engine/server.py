@@ -213,7 +213,7 @@ def css_update():
         print("[ERROR] Score update from image did not have all required fields, or had malformed fields.")
         return("FAIL")
     if not db.validate_alphanum(team) or not db.validate_alphanum(image):
-        print("[ERROR] Team or image contained illegal characters.")
+        print("[ERROR] Team or image contained illegal characters. team", image)
         return("FAIL")
     if "teams" in em.remote:
         if team not in em.remote["teams"]:

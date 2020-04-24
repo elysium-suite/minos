@@ -27,9 +27,11 @@ Start the engine with `service minos start`, or `service minos start logs` if yo
 
 By default, the configuration and database don't reset when you start the engine, as long as there is a currently existing `running-config.cfg`. Set the `"reset=1"` option in the `[settings]` directive to reset every time the engine launches.
 
-## Screenshot
+## Screenshots
 
 ![Status Page](setup/imgs/status.png)
+
+![CSS Reporting](setup/imgs/css.png)
 
 ## Features
 
@@ -46,7 +48,7 @@ By default, the configuration and database don't reset when you start the engine
 - Clock and competition time tracker
 - Timing-based injects and scoring
 - CyberPatriot-esque scoring graphics and pages :)
-- (WIP) CSS Find-and-fix vulnerability leaderboard
+- CSS Find-and-fix vulnerability leaderboard
 
 ## Scoring Engine Mechanics
 

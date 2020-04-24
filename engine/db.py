@@ -207,21 +207,18 @@ def get_css_scores(remote):
     team_scores = []
     try:
         team_data = execute("SELECT team, image, points FROM css_results GROUP BY team, image ORDER BY time DESC")
-        team = team_data[0][0]
     except:
         return team_scores
     else:
-        image_count = 0
-        team_sum = 0
+        team_score_dict = {}
         for data in team_data:
-            if team != data[0]:
-                team_scores.append((team, image_count, get_css_elapsed_time(team), team_sum))
-                team = data[0]
-                image_count = 0
-                team_sum = 0
-            team_sum += data[2]
-            image_count += 1
-        team_scores.append((team, image_count, get_css_elapsed_time(team), team_sum))
+            if data[0] not in team_score_dict:
+                team_score_dict[data[0]] = [0, 0] # [image_count, team_score]
+            team_score_dict[data[0]][0] += 1
+            team_score_dict[data[0]][1] += data[2]
+
+        for team, team_data in team_score_dict.items():
+            team_scores.append((team, team_data[0], get_css_elapsed_time(team), team_data[1]))
 
     # This can't possibly be efficient
     team_scores.sort(key=lambda tup: tup[0])
@@ -446,12 +443,12 @@ def reset_engine():
             execute("INSERT INTO users (team, username, password, is_admin) \
                 VALUES (?, ?, ?, ?)",  (team, team_info['username'], pwhash, 0))
     else:
-        print("[WARN] No teams found in configuration! Running into CCS mode.")
+        print("[WARN] No teams found in configuration! Running in CCS mode.")
         config['settings']['css_mode'] = True
         write_running_config(config)
 
     if not 'systems' in config:
-        print("[WARN] No systems found in configuration! Running into CCS mode.")
+        print("[WARN] No systems found in configuration! Running in CCS mode.")
         config['settings']['css_mode'] = True
         write_running_config(config)
 
