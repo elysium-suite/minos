@@ -264,7 +264,8 @@ points = 500
 
 ## Troubleshooting
 
-Service won't restart
+**Service won't restart**
+
 ![no_restart](setup/imgs/broken_restart.png)
 - Kill python and uwsgi processes
  - `$ sudo pkill -9 python3; pkill -p uwsgi`
