@@ -262,6 +262,10 @@ points = 500
 ```
 - Custom: (WIP) test for a condition in the client scoring engine
 
+## Troubleshooting
+
+- 
+
 ## Contributing and Disclaimer
 
 If you have anything you would like to add or fix, please make a pull request! No improvement or fix is too small, and help is always appreciated.
