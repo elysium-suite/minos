@@ -262,6 +262,20 @@ points = 500
 ```
 - Custom: (WIP) test for a condition in the client scoring engine
 
+## Troubleshooting
+
+**Service won't restart**
+
+![no_restart](setup/imgs/broken_restart.png)
+- Kill python and uwsgi processes
+ - `$ sudo pkill -9 python3; pkill -p uwsgi`
+
+**Read-Only Database**
+
+![no_restart](setup/imgs/readonly.png)
+- Chown everything 
+ - `$ chown -R www-data:www-data /opt/minos`
+
 ## Contributing and Disclaimer
 
 If you have anything you would like to add or fix, please make a pull request! No improvement or fix is too small, and help is always appreciated.
