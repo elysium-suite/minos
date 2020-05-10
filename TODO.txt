@@ -3,7 +3,4 @@ services
 - pop3, imap, rdp
 
 remote
- - message/challenge verification
- - status/time checks
- - export to csv
- - list ips and history at the bottom of graph ? kinda privacy violation
+ - list ips and history at the bottom of graph

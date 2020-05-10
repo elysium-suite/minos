@@ -258,12 +258,12 @@ def get_css_score(team, remote):
             print("=== SCORE PUSH TRIGGERED ===")
             for image, img_score in current_scores.items():
                 if image in scores:
-                    scores[image].append((datetime.strftime(current_block, simple_time_format), img_score))
+                    scores[image].append((datetime.strftime(current_block, time_format), img_score))
                 else:
-                    scores[image] = [(datetime.strftime(current_block, simple_time_format), img_score)]
+                    scores[image] = [(datetime.strftime(current_block, time_format), img_score)]
             current_scores = {}
             while time_diff > block_threshold:
-                labels.append(datetime.strftime(current_block, simple_time_format))
+                labels.append(datetime.strftime(current_block, time_format))
                 current_block += block_threshold
                 time_diff = score_time.replace(microsecond=0) \
                           - current_block.replace(microsecond=0)
@@ -276,12 +276,12 @@ def get_css_score(team, remote):
             image_data[score_data[1]] = [get_css_play_time(team, image=score_data[1]), 0, 0, score_data[2], score_data[3]]
 
     print("=== END SCORE PUSH ===")
-    labels.append(datetime.strftime(current_block, simple_time_format))
+    labels.append(datetime.strftime(current_block, time_format))
     for image, img_score in current_scores.items():
         if image in scores:
-            scores[image].append((datetime.strftime(current_block, simple_time_format), img_score))
+            scores[image].append((datetime.strftime(current_block, time_format), img_score))
         else:
-            scores[image] = [(datetime.strftime(current_block, simple_time_format), img_score)]
+            scores[image] = [(datetime.strftime(current_block, time_format), img_score)]
 
     for image in image_data.values():
         try:
