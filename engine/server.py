@@ -191,10 +191,10 @@ def css():
             color_settings = db.get_css_colors()
             if color_settings is not None:
                 for index, image in enumerate(image_data):
-                        colors[image] = color_settings[index]
-                else:
-                    for index, image in enumerate(image_data):
-                        colors[image] = 'rgb(255, 255, 255)'
+                    colors[image] = color_settings[index]
+            else:
+                for index, image in enumerate(image_data):
+                    colors[image] = 'rgb(255, 255, 255)'
 
             team_info = (db.get_css_elapsed_time(team), \
 
