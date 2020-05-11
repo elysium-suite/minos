@@ -110,8 +110,8 @@
                 {% for image in scores %}
                 {
 					label: '{{ image }}',
-					backgroundColor: 'rgb(255, 255, 255)',
-				    borderColor: 'rgb(255, 255, 255)',
+					backgroundColor: '{{ colors[image] }}',
+				    borderColor: '{{ colors[image] }}',
 
                     data: [
                     {% for time, score in scores[image] %}
