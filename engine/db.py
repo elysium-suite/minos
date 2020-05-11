@@ -203,7 +203,6 @@ def get_css_images(remote):
 
 def get_css_scores(remote):
     teams = get_css_teams(remote)
-    images = get_css_images(remote)
     team_scores = []
     try:
         team_data = execute("SELECT team, image, points FROM css_results GROUP BY team, image ORDER BY time DESC")
@@ -395,6 +394,11 @@ def read_running_config():
         print("[WARN] File running-config.cfg not found.")
         config = None
     return config
+
+def get_css_colors():
+    try:
+        return read_config()["remote"]["colors"]
+    except: pass
 
 def write_running_config(config):
     with open(path + 'engine/running-config.cfg', 'w') as f:

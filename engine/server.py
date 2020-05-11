@@ -186,11 +186,21 @@ def css():
             print("5")
             for image in image_data.values():
                 total_score += image[3]
+
+            colors = {}
+            color_settings = db.get_css_colors()
+            if color_settings is not None:
+                for index, image in enumerate(image_data):
+                        colors[image] = color_settings[index]
+                else:
+                    for index, image in enumerate(image_data):
+                        colors[image] = 'rgb(255, 255, 255)'
+
             team_info = (db.get_css_elapsed_time(team), \
 
                          db.get_css_play_time(team), \
                          total_score)
-            return render_template("scores_css_details.html", labels=labels, team_name=team_name, team_info=team_info, image_data=image_data, scores=scores, css_mode=css_mode)
+            return render_template("scores_css_details.html", labels=labels, team_name=team_name, team_info=team_info, image_data=image_data, scores=scores, css_mode=css_mode, colors=colors)
         else:
             print("[ERROR] Invalid team specified:", request.args["team"])
     team_scores = db.get_css_scores(em.remote)
