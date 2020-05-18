@@ -159,9 +159,11 @@ def service():
     return render_template("scores_service.html", teams = em.teams, scores = scores, \
                             rg = red_or_green)
 
-@app.route('/scores/css', methods=['GET', 'POST'])
+
+
+@app.route('/scores/css')
+# @admin_required # Uncomment this line if you want to prevent people from seeing the scoreboard without being admin
 def css():
-    print("1")
     em.load()
     if "css_mode" in em.settings:
         css_mode = em.settings["css_mode"]
@@ -172,18 +174,14 @@ def css():
     else:
         event = None
     if "team" in request.args:
-        print("2")
         teams = db.get_css_teams(em.remote)
         team = request.args["team"]
         team_name = team
-        print("3")
         if not team in teams:
             team = db.remove_alias(request.args["team"], em.remote)
-        print("4")
         if team in teams:
             labels, image_data, scores = db.get_css_score(team, em.remote)
             total_score = 0
-            print("5")
             for image in image_data.values():
                 total_score += image[3]
 
@@ -258,9 +256,7 @@ def css_update():
 
 @app.route('/scores/css/status')
 def css_status():
-    em.load()
-    # time elapsed
-    return("pong + inject commands")
+    return("OK")
 
 @app.route('/scores/css/export')
 def css_csv():
