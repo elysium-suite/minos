@@ -57,10 +57,6 @@ By default, the configuration and database don't reset when you start the engine
 - Team gets 0 points for each service down
 - Each five consecutive service down checks is -5 point penalty (SLA violation)
 
-## CSS Points
-
-(WIP) Engine takes CSS scores from an HTTP post request. If you're making your own client scoring software, request and auth token then use it. Your auth token will be the only one accepted for the machine for the duration of the scoring session, until it expires (5 mins without use) or the scoring engine resets.
-
 ## Configuration
 
 The configuration is in TOML (Tom's Obvious, Minimal Language).
@@ -267,14 +263,16 @@ points = 500
 **Service won't restart**
 
 ![no_restart](setup/imgs/broken_restart.png)
-- Kill python and uwsgi processes
- - `$ sudo pkill -9 python3; pkill -p uwsgi`
+- On some operating systems (notably DigitalOcean boxes), the init.d script fails to manage the service correctly.
+- You can manually kill the python and uwsgi processes.
+ - `sudo pkill -9 python3; pkill -p uwsgi`
 
 **Read-Only Database**
 
 ![no_restart](setup/imgs/readonly.png)
-- Chown everything 
- - `$ chown -R www-data:www-data /opt/minos`
+- This occurs because the database is owned by root (the `Minos` process) and can't be read by the `uwsgi` worker threads.
+- The solution is to `chown` everything.
+ - `chown -R www-data:www-data /opt/minos`
 
 ## Contributing and Disclaimer
 
