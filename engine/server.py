@@ -3,6 +3,7 @@ from flask_login import LoginManager, current_user, login_user, logout_user, log
 from flask import Flask, render_template, request, redirect, url_for, send_file
 from urllib.parse import urlparse, urljoin
 from decorators import admin_required
+from datetime import datetime, timedelta
 from web import *
 from forms import *
 from io import BytesIO
@@ -14,9 +15,16 @@ import os
 wm = WebModel()
 em = engine.EngineModel()
 app = Flask(__name__)
-app.secret_key = 'this is a secret'
+app.secret_key = 'this is a secret!! lol'
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+# Caching and refreshing...
+refresh_threshold = timedelta(seconds=15)
+scoreboard_time_refresh = datetime.now() - refresh_threshold
+team_time_refresh = datetime.now() - refresh_threshold
+team_scores = None # For scoreboard
+team_data = {} # For details
 
 @login_manager.user_loader
 def load_user(uid):
@@ -93,12 +101,16 @@ def result():
 def clock():
     em.load()
     time_left = db.get_time_left()
+    if "duration" in em.settings:
+        duration = em.settings["duration"]
+    else:
+        duration = "0:00"
     try:
         if time_left.days < 0:
             time_left = "00:00:00"
     except:
         pass
-    return render_template('clock.html', duration=em.settings["duration"], \
+    return render_template('clock.html', duration=duration, \
                             time_left=time_left)
 
 @app.route('/injects', methods=['GET', 'POST'])
@@ -164,6 +176,9 @@ def service():
 @app.route('/scores/css')
 # @admin_required # Uncomment this line if you want to prevent people from seeing the scoreboard without being admin
 def css():
+    global scoreboard_time_refresh
+    global team_scores # for main scoreboard
+    global team_data # for details
     em.load()
     if "css_mode" in em.settings:
         css_mode = em.settings["css_mode"]
@@ -173,17 +188,45 @@ def css():
         event = em.remote["event"]
     else:
         event = None
+
+    # Details view for CSS
     if "team" in request.args:
         teams = db.get_css_teams(em.remote)
         team = request.args["team"]
         team_name = team
         if not team in teams:
-            team = db.remove_alias(request.args["team"], em.remote)
+            team = db.remove_alias(team, em.remote)
         if team in teams:
-            labels, image_data, scores = db.get_css_score(team, em.remote)
-            total_score = 0
-            for image in image_data.values():
-                total_score += image[3]
+
+            if team not in team_data or (team in team_data and (datetime.now() - team_data[team]["refresh_time"]) > refresh_threshold):
+                print("[INFO] Refreshing data for team", team)
+                labels, image_data, scores = db.get_css_score(team, em.remote)
+                total_score = 0
+                for image in image_data.values():
+                    total_score += image[3]
+
+                team_info = (db.get_css_elapsed_time(team), \
+                             db.get_css_play_time(team), \
+                             total_score)
+
+                # Wonderful caching
+                team_data[team] = {}
+                team_data[team]["labels"] = labels
+                team_data[team]["image_data"] = image_data
+                team_data[team]["scores"] = scores
+                team_data[team]["refresh_time"] = datetime.now()
+                team_data[team]["elapsed_time"] = team_info[0]
+                team_data[team]["play_time"] = team_info[1]
+                team_data[team]["total_score"] = team_info[2]
+
+            else:
+
+                labels = team_data[team]["labels"]
+                image_data = team_data[team]["image_data"]
+                scores = team_data[team]["scores"]
+                team_info = (team_data[team]["elapsed_time"], \
+                             team_data[team]["play_time"],
+                             team_data[team]["total_score"])
 
             colors = {}
             color_settings = db.get_css_colors()
@@ -193,15 +236,16 @@ def css():
             else:
                 for index, image in enumerate(image_data):
                     colors[image] = 'rgb(255, 255, 255)'
-
-            team_info = (db.get_css_elapsed_time(team), \
-
-                         db.get_css_play_time(team), \
-                         total_score)
             return render_template("scores_css_details.html", labels=labels, team_name=team_name, team_info=team_info, image_data=image_data, scores=scores, css_mode=css_mode, colors=colors)
         else:
             print("[ERROR] Invalid team specified:", request.args["team"])
-    team_scores = db.get_css_scores(em.remote)
+
+    # Main scoreboard view
+    time_since_refresh = datetime.now() - scoreboard_time_refresh
+    if time_since_refresh > refresh_threshold:
+        print("[INFO] Refreshing CSS scoreboard...")
+        team_scores = db.get_css_scores(em.remote)
+        scoreboard_time_refresh = datetime.now()
     if "team_aliases" in em.remote:
         team_scores = db.apply_aliases(team_scores, em.remote)
     return render_template("scores_css.html", team_scores=team_scores, event=event, css_mode=css_mode)
@@ -246,7 +290,7 @@ def css_update():
             print("[ERROR] Score update from image did not pass (passwordless) challenge verification.")
             return("FAIL")
     if success:
-        vulns = db.printAsHex("|".join(vulns).encode())
+        vulns = db.printAsHex("|-|".join(vulns).encode())
         db.insert_css_score(team, image, score, vulns)
         return("OK")
     else:

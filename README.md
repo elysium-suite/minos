@@ -17,15 +17,17 @@ DOCKER_ID=$(sudo docker run -v $(pwd):/opt/minos -p 80:80 -td ubuntu)
 sudo docker exec -it $DOCKER_ID "/bin/bash"
 cd /opt/minos/setup && ./install.sh
 ```
-> If you don't want to use Docker, you can just move the repo to /opt/minos in an Ubuntu VM and run the install script. YMMV, has been tested on Ubuntu 18.10+.
+> If you don't want to use Docker, you can just move the repo to /opt/minos in an Ubuntu VM and run the install script. YMMV, has been tested on Ubuntu 18.10.
 
 3. Put your config in `/opt/minos/config.cfg`.
 > Don't have a config? Copy over the example config with `cp /opt/minos/{example-,}config.cfg`.
 
-Start the engine with `service minos start`, or `service minos start logs` if you want to see the service logs. Web interface should be up at `http://localhost`.
+4. Start the engine with `service minos start`, or `service minos start logs` if you want to see the service logs.
 > You can stop the engine with `service minos stop`.
 
-By default, the configuration and database don't reset when you start the engine, as long as there is a currently existing `running-config.cfg`. Set the `"reset=1"` option in the `[settings]` directive to reset every time the engine launches.
+5. Configure the permissions for the database with `chown -R www-data:www-data /opt/minos/`.
+
+After that, the web interface should be up at `http://localhost`. By default, the configuration and database don't reset when you start the engine, as long as there is a currently existing `running-config.cfg`. Set the `"reset=1"` option in the `[settings]` directive to reset every time the engine launches.
 
 ## Screenshots
 
@@ -107,6 +109,17 @@ time = "0:05"
 type = "manual"
 title = "Intrusion report"
 details = "Deliver an intrusion report ASAP."
+
+[remote]
+# See the CSS reporting section for info on these options
+password = "HackersArentReal"
+teams = [ "TEAM1-129513",
+          "TEAM2-187503" ]
+team_aliases = [ "team1",
+                 "team2" ]
+images = [ "supercoolimage1",
+           "supercoolimage2" ]
+time_limit = "6:00"
 ```
 
 ### Service Configuration

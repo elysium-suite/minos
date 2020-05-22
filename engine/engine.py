@@ -109,7 +109,8 @@ class EngineModel(object):
             db.insert_totals_score(team, "sla", sla_points, check_round)
 
             # CSS Points
-            css_points = db.get_css_score()
+            #css_points = db.get_css_score()
+            css_points = 0
             db.insert_totals_score(team, "css", css_points, check_round)
 
             # Total Points
@@ -178,7 +179,7 @@ class EngineModel(object):
         else:
             vulns = vulns.decode("ascii")
 
-        vulns = vulns.split("|")
+        vulns = vulns.split("|-|")
         return vulns, True
 
 def start():

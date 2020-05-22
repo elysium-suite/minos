@@ -15,7 +15,11 @@ class WebModel(object):
 
     def check_pw(self, username, pw):
         username = username.lower()
-        uid, team, name, pwhash, is_admin = db.execute("SELECT * FROM users WHERE username=?", (username,))[0]
+        data = db.execute("SELECT * FROM users WHERE username=?", (username,))
+        if not data:
+            return ""
+        else:
+            uid, team, name, pwhash, is_admin = data[0]
         return bcrypt.checkpw(pw.encode('utf-8'), pwhash)
 
 

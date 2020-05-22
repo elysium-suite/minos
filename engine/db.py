@@ -89,7 +89,7 @@ def get_time_elapsed():
 
 def get_time_left():
     try:
-        duration = read_config()["settings"]["duration"]
+        duration = read_running_config()["settings"]["duration"]
     except:
         duration = "3:30"
     hours, minutes = list(map(int, duration.split(":")))
@@ -175,10 +175,11 @@ def get_css_csv(remote):
         team_sum = 0
         for image in images:
             try:
-                team_sum += execute("SELECT `points` FROM `css_results` WHERE team=? AND image=? ORDER BY time DESC", (team, image), one=True)[0]
+                image_sum = execute("SELECT `points` FROM `css_results` WHERE team=? AND image=? ORDER BY time DESC", (team, image), one=True)[0]
+                http_csv += str.encode(find_alias(index, remote) + "," + team + "," + image + "," + str(image_sum) + "," + get_css_play_time(team, image=image) + "," + get_css_elapsed_time(team) + "\n")
             except:
+                # Ignoring images that a team hasn't started yet
                 pass
-        http_csv += str.encode(find_alias(index, remote) + "," + team + "," + str(team_sum) + "," + get_css_play_time(team) + "," + get_css_elapsed_time(team) + "\n")
     return http_csv
 
 def get_css_teams(remote):
@@ -231,11 +232,11 @@ def get_css_scores(remote):
 def get_css_score(team, remote):
     image_data = {}
 
-    print("GETTING scores for team", team)
+    #print("GETTING scores for team", team)
     # Get all scores from one team
     try:
         team_scores = execute("SELECT `time`, `image`, `points`, `vulns` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
-        print("TEAM SCORES IS", team_scores)
+        #print("TEAM SCORES IS", team_scores)
         current_block = datetime.strptime(team_scores[0][0], "%Y-%m-%d %H:%M:%S")
     except:
         return [], {}, {}
@@ -252,9 +253,9 @@ def get_css_score(team, remote):
         score_time = datetime.strptime(score_data[0], "%Y-%m-%d %H:%M:%S")
         time_diff = score_time.replace(microsecond=0) \
                   - current_block.replace(microsecond=0)
-        print("SCORES IS", scores)
+        #print("SCORES IS", scores)
         if time_diff > block_threshold:
-            print("=== SCORE PUSH TRIGGERED ===")
+            #print("=== SCORE PUSH TRIGGERED ===")
             for image, img_score in current_scores.items():
                 if image in scores:
                     scores[image].append((datetime.strftime(current_block, time_format), img_score))
@@ -266,7 +267,7 @@ def get_css_score(team, remote):
                 current_block += block_threshold
                 time_diff = score_time.replace(microsecond=0) \
                           - current_block.replace(microsecond=0)
-        print("SETTING SCORE", score_data[2])
+        #print("SETTING SCORE", score_data[2])
         current_scores[score_data[1]] = score_data[2]
         if score_data[1] in image_data:
             image_data[score_data[1]][3] = score_data[2]
@@ -274,7 +275,7 @@ def get_css_score(team, remote):
         else:
             image_data[score_data[1]] = [get_css_play_time(team, image=score_data[1]), 0, 0, score_data[2], score_data[3]]
 
-    print("=== END SCORE PUSH ===")
+    #print("=== END SCORE PUSH ===")
     labels.append(datetime.strftime(current_block, time_format))
     for image, img_score in current_scores.items():
         if image in scores:
@@ -286,13 +287,13 @@ def get_css_score(team, remote):
         try:
             image[4] = bytes.fromhex(image[4])
             image[4] = image[4].decode("ascii")
-            vuln_info = image[4].split("|")
+            vuln_info = image[4].split("|-|")
             image[1] = vuln_info[0]
             image[2] = vuln_info[1]
             if vuln_info[-1] == "":
-                image[4] = "|".join(vuln_info[2:-1])
+                image[4] = "|-|".join(vuln_info[2:-1])
             else:
-                image[4] = "|".join(vuln_info[2:])
+                image[4] = "|-|".join(vuln_info[2:])
         except Exception as e:
             print("[ERROR] Error decoding hex vulns from databases! (" + str(e) + ")")
 
@@ -352,7 +353,7 @@ def apply_aliases(team_scores, remote):
 def remove_alias(team, remote):
     for index, team_id in enumerate(remote["team_aliases"]):
         if team_id == team:
-            print("removing alias", team," to", remote["teams"][index])
+            print("[INFO] Removing alias", team, "to", remote["teams"][index])
             return remote["teams"][index]
     return team
 
