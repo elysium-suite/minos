@@ -15,9 +15,13 @@ import os
 wm = WebModel()
 em = engine.EngineModel()
 app = Flask(__name__)
-app.secret_key = 'this is a secret!! lol'
+# Should ideally store key in config file-- but this works pretty well
+app.secret_key = os.urandom(24).hex()
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+# CSS hardcoded values
+permitted_new_css_ip = "10.10.0.2" # Put your whitelisted IP here
 
 # Caching and refreshing...
 refresh_threshold = timedelta(seconds=15)
@@ -25,6 +29,7 @@ scoreboard_time_refresh = datetime.now() - refresh_threshold
 team_time_refresh = datetime.now() - refresh_threshold
 team_scores = None # For scoreboard
 team_data = {} # For details
+ips = {} # Stalking incoming IPs for CSS leaderboard :eyes:
 
 @login_manager.user_loader
 def load_user(uid):
@@ -292,11 +297,76 @@ def css_update():
     if success:
         vulns = db.printAsHex("|-|".join(vulns).encode())
         db.insert_css_score(team, image, score, vulns)
+        ips[team] = request.remote_addr
         return("OK")
     else:
         print("[ERROR] Vuln data decryption failed.")
         return("FAIL")
     return("FAIL")
+
+@app.route('/scores/css/new', methods=['POST'])
+def css_new_team():
+    em.load()
+    request_ip = request.remote_addr
+    if request_ip != permitted_new_css_ip:
+        print("[ERROR] New team ID request wasn't from the authorized IP.")
+        return("FAIL")
+    try:
+        team = request.form["team"].rstrip().strip()
+        id = request.form["id"].rstrip()
+        if "email" in request.form:
+            email = request.form["email"]
+        else:
+            email = None
+    except:
+        print("[ERROR] New team ID request did not have all required fields (team, id).")
+        return("FAIL")
+    if not db.validate_alphanum(team) or not db.validate_alphanum(id):
+        print("[ERROR] New team or id contained illegal characters.")
+        return("FAIL")
+    config = db.read_running_config()
+    try:
+        if team in config["remote"]["team_aliases"]:
+            print("[ERROR] Duplicate team alias (team)")
+            return("FAIL")
+    except:
+        pass
+    try:
+        if id in config["remote"]["teams"]:
+            print("[ERROR] Duplicate team id (id)")
+            return("FAIL")
+    except:
+        pass
+    try:
+        if email in config["remote"]["team_emails"]:
+            print("[ERROR] Duplicate team email (email)")
+            return("FAIL")
+    except:
+        pass
+    if not "remote" in config:
+        config["remote"] = {}
+    if email and not db.validate_email(email):
+        print("[ERROR] Email was not null and contained illegal characters.")
+        return("FAIL")
+    else:
+        if "team_emails" in config["remote"]:
+            config["remote"]["team_emails"].append(email)
+        else:
+            config["remote"]["team_emails"] = [email]
+        if len(config["remote"]["team_emails"]) <= len(config["remote"]["teams"]):
+             for x in range(len(config["remote"]["teams"]) - len(config["remote"]["team_emails"]) + 1):
+                 config["remote"]["team_emails"].insert(0, "N/A")
+    if "teams" in config["remote"]:
+        config["remote"]["teams"].append(id)
+    else:
+        config["remote"]["teams"] = [id]
+    if "team_aliases" in config["remote"]:
+        config["remote"]["team_aliases"].append(team)
+    else:
+        config["remote"]["team_aliases"] = [team]
+    print(config)
+    db.write_running_config(config)
+    return("OK")
 
 @app.route('/scores/css/status')
 def css_status():
@@ -306,7 +376,7 @@ def css_status():
 def css_csv():
     em.load()
     csv_buffer = BytesIO()
-    csv_buffer.write(db.get_css_csv(em.remote))
+    csv_buffer.write(db.get_css_csv(em.remote, ips))
     csv_buffer.seek(0)
     return send_file(csv_buffer, as_attachment=True,
                      attachment_filename='score_report.csv',

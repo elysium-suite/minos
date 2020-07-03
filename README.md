@@ -1,6 +1,6 @@
 # Minos Scoring Engine
 
-This is a scoring engine meant to imitate the functionality of UTSA's CIAS CyberPatriot Scoring Engine with an emphasis on simplicity.  It acts as an uptime scorer (ex. your service has been up 50% of the time, and is down right now). It is based on DSU's DefSec Club [Scoring Engine](https://github.com/DSUDefSec/ScoringEngine). Named after the Greek myth of King Minos, judge of the dead.
+Minos acts as a service uptime scorer (ex. your service has been up 50% of the time, and is down right now). It is based on DSU's DefSec Club [Scoring Engine](https://github.com/DSUDefSec/ScoringEngine).
 
 ## Installation
 
@@ -215,7 +215,7 @@ password = "HackersArentReal"
 teams = [ "TEAM-12398fhn",
           "TEAM-qwertyui" ]
 
-# If specified, replace the above team IDs
+# If specified, replace the below team IDs
 # with the below aliases (one to one)
 # Note: aliases without team IDs above
 # will cause an error. A greater number
@@ -224,6 +224,14 @@ teams = [ "TEAM-12398fhn",
 # however.
 team_aliases = [ "team1",
                  "team2" ]
+
+# If specified, the below emails will be
+# included in the CSV report, matching the index
+# of the team ids and aliases. This can be any
+# identifier that you don't want to be in the unique
+# id nor the scoreboard
+team_emails = [ "team1email@example.org",
+				"team2email@example.org" ]
 
 # If specified, only allow score updates
 # for the following image names
@@ -276,7 +284,7 @@ points = 500
 **Service won't restart**
 
 ![no_restart](setup/imgs/broken_restart.png)
-- On some operating systems (notably DigitalOcean boxes), the init.d script fails to manage the service correctly.
+- In some operating environments (notably DigitalOcean boxes), the init.d script fails to manage the service correctly.
 - You can manually kill the python and uwsgi processes.
  - `sudo pkill -9 python3; pkill -p uwsgi`
 

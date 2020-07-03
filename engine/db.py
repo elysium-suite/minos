@@ -39,8 +39,8 @@ def get_uid(username):
 
 def engine_status():
     config = read_running_config()
-    if config and config["settings"]["running"] == 1:
-        return True
+    if "settings" in config and "running" in config["settings"] and config["settings"]["running"] == 1:
+            return True
     else:
         return False
 
@@ -165,7 +165,7 @@ def insert_totals_score(team, type, points, check_round):
 # CSS FUNCTIONS #
 #################
 
-def get_css_csv(remote):
+def get_css_csv(remote, ips):
     http_csv = str.encode("")
     teams = get_css_teams(remote)
     images = get_css_images(remote)
@@ -176,7 +176,11 @@ def get_css_csv(remote):
         for image in images:
             try:
                 image_sum = execute("SELECT `points` FROM `css_results` WHERE team=? AND image=? ORDER BY time DESC", (team, image), one=True)[0]
-                http_csv += str.encode(find_alias(index, remote) + "," + team + "," + image + "," + str(image_sum) + "," + get_css_play_time(team, image=image) + "," + get_css_elapsed_time(team) + "\n")
+                if team in ips:
+                    ip = ips[team]
+                else:
+                    ip = "N/A"
+                http_csv += str.encode(find_email(index, remote) + "," + find_alias(index, remote) + "," + team + "," + image + "," + str(image_sum) + "," + ip + "," + get_css_play_time(team, image=image) + "," + get_css_elapsed_time(team) + "\n")
             except:
                 # Ignoring images that a team hasn't started yet
                 pass
@@ -229,6 +233,8 @@ def get_css_scores(remote):
     team_scores.reverse()
     return(team_scores)
 
+
+# TODO optimize this
 def get_css_score(team, remote):
     image_data = {}
 
@@ -296,7 +302,6 @@ def get_css_score(team, remote):
                 image[4] = "|-|".join(vuln_info[2:])
         except Exception as e:
             print("[ERROR] Error decoding hex vulns from databases! (" + str(e) + ")")
-
     return(labels, image_data, scores)
 
 def get_css_elapsed_time(team):
@@ -335,9 +340,21 @@ def insert_css_score(team, image, points, vulns):
     execute("INSERT INTO `css_results` ('team', 'image', 'points', 'vulns') VALUES (?, ?, ?, ?)", (team, image, points, vulns))
 
 def find_alias(team_index, remote):
-    aliases = remote["team_aliases"]
+    try:
+        aliases = remote["team_aliases"]
+    except:
+        aliases = []
     if not team_index > len(aliases) - 1:
         return aliases[team_index]
+    return "N/A"
+
+def find_email(team_index, remote):
+    try:
+        emails = remote["team_emails"]
+    except:
+        emails = []
+    if not team_index > len(emails) - 1:
+        return emails[team_index]
     return "N/A"
 
 def apply_aliases(team_scores, remote):
@@ -376,6 +393,12 @@ def validate_alphanum(string):
         return True
     return False
 
+def validate_email(string):
+    # Courtesy of regular-expressions.info
+    if re.compile("(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)").match(string):
+        return True
+    return False
+
 def copy_config():
     print("[INFO] Copying config into running-config...")
     write_running_config(read_config())
@@ -388,22 +411,22 @@ def read_config():
 def read_running_config():
     try:
         with open(path + 'engine/running-config.cfg', 'r') as f:
-            config = toml.load(f)
-        if "settings" not in config:
-            config["settings"] = {}
+            config_tmp = toml.load(f)
+        if "settings" not in config_tmp:
+            config_tmp["settings"] = {}
     except OSError:
         print("[WARN] File running-config.cfg not found.")
-        config = None
-    return config
+        config_tmp = None
+    return config_tmp
 
 def get_css_colors():
     try:
         return read_config()["remote"]["colors"]
     except: pass
 
-def write_running_config(config):
+def write_running_config(config_tmp):
     with open(path + 'engine/running-config.cfg', 'w') as f:
-        toml.dump(config, f)
+        toml.dump(config_tmp, f)
 
 def stop_engine():
     config = read_running_config()

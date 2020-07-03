@@ -194,7 +194,10 @@ def start():
         em = EngineModel()
         while True:
             em.load()
-            running = em.settings['running']
+            if "running" in em.settings:
+                running = em.settings['running']
+            else:
+                running = 1
             if "interval" in em.settings:
                 interval = em.settings['interval']
             else:
