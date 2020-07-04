@@ -3,4 +3,7 @@ services
 - pop3, imap, rdp
 
 remote
- - list ips and history at the bottom of graph
+- list ips and history at the bottom of graph
+
+general
+- chown db after creating it

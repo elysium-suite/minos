@@ -312,21 +312,21 @@ def css_new_team():
         print("[ERROR] New team ID request wasn't from the authorized IP.")
         return("FAIL")
     try:
-        team = request.form["team"].rstrip().strip()
-        id = request.form["id"].rstrip()
+        id = request.form["teamid"].rstrip().strip()
+        alias = request.form["alias"].rstrip()
         if "email" in request.form:
             email = request.form["email"]
         else:
             email = None
     except:
-        print("[ERROR] New team ID request did not have all required fields (team, id).")
+        print("[ERROR] New team ID request did not have all required fields (teamid, alias).")
         return("FAIL")
-    if not db.validate_alphanum(team) or not db.validate_alphanum(id):
+    if not db.validate_alphanum(alias) or not db.validate_alphanum(id):
         print("[ERROR] New team or id contained illegal characters.")
         return("FAIL")
     config = db.read_running_config()
     try:
-        if team in config["remote"]["team_aliases"]:
+        if alias in config["remote"]["team_aliases"]:
             print("[ERROR] Duplicate team alias (team)")
             return("FAIL")
     except:
@@ -345,7 +345,7 @@ def css_new_team():
         pass
     if not "remote" in config:
         config["remote"] = {}
-    if email and not db.validate_email(email):
+    if email and not db.validate_alphanum(email):
         print("[ERROR] Email was not null and contained illegal characters.")
         return("FAIL")
     else:
@@ -353,15 +353,19 @@ def css_new_team():
             config["remote"]["team_emails"].append(email)
         else:
             config["remote"]["team_emails"] = [email]
-        if len(config["remote"]["team_emails"]) <= len(config["remote"]["teams"]):
-             for x in range(len(config["remote"]["teams"]) - len(config["remote"]["team_emails"]) + 1):
+        if "teams" in config["remote"]:
+            lenTeams = 0
+        else:
+            lenTeams = len(config["remote"]["teams"])
+        if len(config["remote"]["team_emails"]) <= lenTeams:
+             for x in range(lenTeams - len(config["remote"]["team_emails"]) + 1):
                  config["remote"]["team_emails"].insert(0, "N/A")
     if "teams" in config["remote"]:
         config["remote"]["teams"].append(id)
     else:
         config["remote"]["teams"] = [id]
     if "team_aliases" in config["remote"]:
-        config["remote"]["team_aliases"].append(team)
+        config["remote"]["team_aliases"].append(alias)
     else:
         config["remote"]["team_aliases"] = [team]
     print(config)

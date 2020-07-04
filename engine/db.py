@@ -389,13 +389,7 @@ def xor(a, b):
     return bytes(xored)
 
 def validate_alphanum(string):
-    if re.compile("^[a-zA-Z0-9-]+$").match(string):
-        return True
-    return False
-
-def validate_email(string):
-    # Courtesy of regular-expressions.info
-    if re.compile("(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)").match(string):
+    if re.compile("^[a-zA-Z0-9-@_.]+$").match(string):
         return True
     return False
 
