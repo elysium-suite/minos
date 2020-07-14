@@ -207,32 +207,28 @@ def get_css_images(remote):
     return images
 
 def get_css_scores(remote):
-    teams = get_css_teams(remote)
     team_scores = []
     try:
-        team_data = execute("SELECT team, image, points FROM css_results GROUP BY team, image ORDER BY time DESC")
+        # Returns most recent image scores for each team
+        # [(time, team, image, points), ...]
+        team_data = execute("SELECT DISTINCT max(time) as time, team, image, points FROM css_results GROUP BY team, image")
     except:
         return team_scores
-    else:
-        team_score_dict = {}
-        for data in team_data:
-            if data[0] not in team_score_dict:
-                team_score_dict[data[0]] = [0, 0] # [image_count, team_score]
-            team_score_dict[data[0]][0] += 1
-            team_score_dict[data[0]][1] += data[2]
 
-        for team, team_data in team_score_dict.items():
-            team_scores.append((team, team_data[0], get_css_elapsed_time(team), team_data[1]))
+    current_team = ""
+    team_times = get_css_all_elapsed_time()
+    for data in team_data:
+        if data[1] != current_team: # If new team
+            # append(team, image_count, elapsed_time, total_points)
+            team_scores.append([data[1], 1, team_times[data[1]], data[3]])
+            current_team = data[1]
+        else:
+            team_scores[-1][1] += 1 # Increment image count
+            team_scores[-1][3] += data[3] # Add new image points
 
-    # This can't possibly be efficient
-    team_scores.sort(key=lambda tup: tup[0])
-    team_scores.reverse()
-    team_scores.sort(key=lambda tup: tup[2])
-    team_scores.reverse()
-    team_scores.sort(key=lambda tup: tup[3])
-    team_scores.reverse()
+    team_scores.sort(key=lambda tup: tup[2]) # Sort by time
+    team_scores.sort(key=lambda tup: tup[3], reverse=True) # Sort by score
     return(team_scores)
-
 
 # TODO optimize this
 def get_css_score(team, remote):
@@ -241,7 +237,7 @@ def get_css_score(team, remote):
     #print("GETTING scores for team", team)
     # Get all scores from one team
     try:
-        team_scores = execute("SELECT `time`, `image`, `points`, `vulns` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
+        team_scores = execute("SELECT time, image, points, vulns FROM css_results WHERE team=? ORDER BY time ASC", (team,))
         #print("TEAM SCORES IS", team_scores)
         current_block = datetime.strptime(team_scores[0][0], "%Y-%m-%d %H:%M:%S")
     except:
@@ -314,6 +310,37 @@ def get_css_elapsed_time(team):
         return str(time_elapsed)
     except:
         return "0:00:00"
+
+def get_css_all_elapsed_time():
+    team_times = {}
+
+    all_times = execute("SELECT time, team FROM css_results ORDER BY time ASC")
+    all_times.sort(key=lambda tup: tup[0]) # Sort by time
+    all_times.sort(key=lambda tup: tup[1]) # Sort by team
+
+    time_string = "%Y-%m-%d %H:%M:%S"
+    current_team = all_times[0][1]
+    first_time = all_times[0][0]
+    last_time = first_time
+
+    for time_item in all_times:
+        if current_team != time_item[1]: # If new team
+            # Calculate previous team's elapsed time
+            first_time = datetime.strptime(first_time, time_string)
+            last_time = datetime.strptime(last_time, time_string)
+            team_times[current_team] = str(last_time.replace(microsecond=0) - first_time.replace(microsecond=0))
+
+            # Assign new accurate current_team value
+            current_team = time_item[1]
+            first_time = time_item[0]
+        last_time = time_item[0]
+
+    # Catch the last team
+    start_time = datetime.strptime(first_time, time_string)
+    end_time = datetime.strptime(last_time, time_string)
+    team_times[current_team] = str(end_time.replace(microsecond=0) - start_time.replace(microsecond=0))
+
+    return team_times
 
 
 def get_css_play_time(team, image=None):
