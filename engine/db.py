@@ -236,7 +236,7 @@ def get_css_images(remote):
     if "images" in remote:
         images = remote["images"]
     else:
-        ugly_images = execute("SELECT DISTINCT `image` FROM `css_results`")
+        ugly_images = execute("SELECT DISTINCT image FROM css_results ORDER BY image")
         images = []
         for image in ugly_images:
             images.append(image[0])
@@ -271,13 +271,17 @@ def get_css_scores(remote, image=None):
     return(team_scores)
 
 # TODO optimize this
-def get_css_score(team, remote):
+def get_css_score(team, remote, image=None):
     image_data = {}
 
     #print("GETTING scores for team", team)
     # Get all scores from one team
     try:
-        team_scores = execute("SELECT time, image, points, vulns FROM css_results WHERE team=? ORDER BY time ASC", (team,))
+        # Filter by image if provided
+        if image:
+            team_scores = execute("SELECT time, image, points, vulns FROM css_results WHERE team=? and image=? ORDER BY time ASC", (team, image))
+        else:
+            team_scores = execute("SELECT time, image, points, vulns FROM css_results WHERE team=? ORDER BY time ASC", (team,))
         #print("TEAM SCORES IS", team_scores)
         current_block = datetime.strptime(team_scores[0][0], "%Y-%m-%d %H:%M:%S")
     except:
@@ -472,7 +476,7 @@ def read_running_config():
 
 def get_css_colors():
     try:
-        return read_config()["remote"]["colors"]
+        return read_running_config()["remote"]["colors"]
     except: pass
 
 def write_running_config(config_tmp):

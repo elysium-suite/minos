@@ -194,56 +194,6 @@ def css():
     else:
         event = None
 
-    # Details view for CSS
-    if "team" in request.args:
-        teams = db.get_css_teams(em.remote)
-        team = request.args["team"]
-        team_name = team
-        if not team in teams:
-            team = db.remove_alias(team, em.remote)
-        if team in teams:
-            if team not in team_data or (team in team_data and (datetime.now() - team_data[team]["refresh_time"]) > refresh_threshold):
-                print("[INFO] Refreshing data for team", team)
-                labels, image_data, scores = db.get_css_score(team, em.remote)
-                total_score = 0
-                for image in image_data.values():
-                    total_score += image[3]
-
-                team_info = (db.get_css_elapsed_time(team), \
-                             db.get_css_play_time(team), \
-                             total_score)
-
-                # Wonderful caching
-                team_data[team] = {}
-                team_data[team]["labels"] = labels
-                team_data[team]["image_data"] = image_data
-                team_data[team]["scores"] = scores
-                team_data[team]["refresh_time"] = datetime.now()
-                team_data[team]["elapsed_time"] = team_info[0]
-                team_data[team]["play_time"] = team_info[1]
-                team_data[team]["total_score"] = team_info[2]
-
-            else:
-
-                labels = team_data[team]["labels"]
-                image_data = team_data[team]["image_data"]
-                scores = team_data[team]["scores"]
-                team_info = (team_data[team]["elapsed_time"], \
-                             team_data[team]["play_time"],
-                             team_data[team]["total_score"])
-
-            colors = {}
-            color_settings = db.get_css_colors()
-            if color_settings is not None:
-                for index, image in enumerate(image_data):
-                    colors[image] = color_settings[index]
-            else:
-                for index, image in enumerate(image_data):
-                    colors[image] = 'rgb(255, 255, 255)'
-            return render_template("scores_css_details.html", labels=labels, team_name=team_name, team_info=team_info, image_data=image_data, scores=scores, css_mode=css_mode, colors=colors)
-        else:
-            print("[ERROR] Invalid team specified:", request.args["team"])
-
     # If filter by image:
     images = db.get_css_images(em.remote)
     image = None
@@ -252,9 +202,76 @@ def css():
         if image not in images:
             print("[ERROR] Invalid image specified:", image)
             image = None
+
+    colors = {}
+    color_settings = db.get_css_colors()
+    image_list = db.get_css_images(em.remote)
+    if color_settings is not None:
+        for index, image_item in enumerate(image_list):
+            colors[image_item] = color_settings[index]
+    else:
+        for index, image_item in enumerate(image_list):
+            colors[image_item] = 'rgb(255, 255, 255)'
+
+    # Details view for CSS
+    if "team" in request.args:
+        teams = db.get_css_teams(em.remote)
+        team = request.args["team"]
+        team_name = team
+        if not team in teams:
+            try:
+                team = db.remove_alias(team, em.remote)
+            except:
+                # Invalid team
+                team = None
+        if team in teams:
+            if image:
+                print("[INFO] Fetching image-specific data for", team, "image", image)
+                labels, image_data, scores = db.get_css_score(team, em.remote, image=image)
+                total_score = 0
+                for image_item in image_data.values():
+                    total_score += image_item[3]
+                team_info = (db.get_css_elapsed_time(team), \
+                             db.get_css_play_time(team), \
+                             total_score)
+            else:
+                if team not in team_data or (team in team_data and (datetime.now() - team_data[team]["refresh_time"]) > refresh_threshold):
+                    print("[INFO] Refreshing data for team", team)
+                    labels, image_data, scores = db.get_css_score(team, em.remote)
+                    total_score = 0
+                    for image_item in image_data.values():
+                        total_score += image_item[3]
+
+                    team_info = (db.get_css_elapsed_time(team), \
+                                 db.get_css_play_time(team), \
+                                 total_score)
+
+                    # Wonderful caching
+                    team_data[team] = {}
+                    team_data[team]["labels"] = labels
+                    team_data[team]["image_data"] = image_data
+                    team_data[team]["scores"] = scores
+                    team_data[team]["refresh_time"] = datetime.now()
+                    team_data[team]["elapsed_time"] = team_info[0]
+                    team_data[team]["play_time"] = team_info[1]
+                    team_data[team]["total_score"] = team_info[2]
+
+                else:
+
+                    labels = team_data[team]["labels"]
+                    image_data = team_data[team]["image_data"]
+                    scores = team_data[team]["scores"]
+                    team_info = (team_data[team]["elapsed_time"], \
+                                 team_data[team]["play_time"],
+                                 team_data[team]["total_score"])
+
+            return render_template("scores_css_details.html", labels=labels, team_name=team_name, team_info=team_info, image_data=image_data, scores=scores, css_mode=css_mode, colors=colors, image=image)
         else:
-            print("[INFO] Fetching CSS scoreboard for image", image)
-            team_scores = db.get_css_scores(em.remote, image=image)
+            print("[ERROR] Invalid team specified:", request.args["team"])
+
+    if image:
+        print("[INFO] Fetching CSS scoreboard for image", image)
+        team_scores = db.get_css_scores(em.remote, image=image)
 
     # Main scoreboard view
     if not image:

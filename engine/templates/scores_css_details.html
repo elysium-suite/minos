@@ -10,8 +10,18 @@
 
 {% block content %}
 
+<style>
+    button a {
+        display: block;
+        text-decoration: none;
+        color: white;
+    }
+
+    button a:hover {
+        color: white;
+        text-decoration: none;
+    }
 {% if css_mode %}
-    <style>
     body {
         background-color: #212529;
     }
@@ -29,9 +39,7 @@
         margin: auto;
         text-align: center;
     }
-    </style>
 {% else %}
-    <style>
     h2, h4, h6 {
         text-align: center;
     }
@@ -43,12 +51,21 @@
     td {
         cursor: pointer;
     }
-    </style>
 {% endif %}
+</style>
 <br/>
-
     <h2>Leaderboard</h2><br>
     <h2>{{ team_name }}</h2><br>
+    {% if image %}
+    <h4>
+    <button class="btn btn-lg btn-dark">
+        <a href="/scores/css?team={{ team_name }}">
+            Only showing data for {{ image }}.
+        </a>
+    </button>
+    </h4>
+    <br>
+    {% endif %}
 
     <!-- Team info -->
     {% if css_mode %}

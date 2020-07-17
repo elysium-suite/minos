@@ -113,32 +113,37 @@
     </thead>
     <tbody>
         {% for team in team_scores %}
+        {% if image %}
+            {% set linktext = '/scores/css?team=' + team[0] + '&image=' + image %}
+        {% else %}
+            {% set linktext = '/scores/css?team=' + team[0] %}
+        {% endif %}
         <tr>
             <td>
-                <a href="/scores/css?team={{ team[0] }}">
+                <a href="{{ linktext }}">
                     {{ team[0] }}
                 </a>
             </td>
             {% if not image %}
             <td>
-                <a href="/scores/css?team={{ team[0] }}">
+                <a href="{{ linktext }}">
                     {{ team[1] }}
                 </a>
             </td>
             {% else %}
             <td>
-                <a href="/scores/css?team={{ team[0] }}">
+                <a href="{{ linktext }}">
                     {{ image }}
                 </a>
             </td>
             {% endif %}
             <td>
-                <a href="/scores/css?team={{ team[0] }}">
+                <a href="{{ linktext }}">
                     {{ team[2] }}
                 </a>
             </td>
             <td>
-                <a href="/scores/css?team={{ team[0] }}">
+                <a href="{{ linktext }}">
                     {{ team[3] }}
                 </a>
             </td>
