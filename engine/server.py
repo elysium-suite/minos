@@ -202,7 +202,6 @@ def css():
         if not team in teams:
             team = db.remove_alias(team, em.remote)
         if team in teams:
-
             if team not in team_data or (team in team_data and (datetime.now() - team_data[team]["refresh_time"]) > refresh_threshold):
                 print("[INFO] Refreshing data for team", team)
                 labels, image_data, scores = db.get_css_score(team, em.remote)
@@ -245,15 +244,29 @@ def css():
         else:
             print("[ERROR] Invalid team specified:", request.args["team"])
 
+    # If filter by image:
+    images = db.get_css_images(em.remote)
+    image = None
+    if "image" in request.args:
+        image = request.args["image"]
+        if image not in images:
+            print("[ERROR] Invalid image specified:", image)
+            image = None
+        else:
+            print("[INFO] Fetching CSS scoreboard for image", image)
+            team_scores = db.get_css_scores(em.remote, image=image)
+
     # Main scoreboard view
-    time_since_refresh = datetime.now() - scoreboard_time_refresh
-    if time_since_refresh > refresh_threshold:
-        print("[INFO] Refreshing CSS scoreboard...")
-        team_scores = db.get_css_scores(em.remote)
-        scoreboard_time_refresh = datetime.now()
+    if not image:
+        time_since_refresh = datetime.now() - scoreboard_time_refresh
+        if time_since_refresh > refresh_threshold:
+            print("[INFO] Refreshing CSS scoreboard...")
+            team_scores = db.get_css_scores(em.remote)
+            scoreboard_time_refresh = datetime.now()
     if "team_aliases" in em.remote:
         team_scores = db.apply_aliases(team_scores, em.remote)
-    return render_template("scores_css.html", team_scores=team_scores, event=event, css_mode=css_mode)
+
+    return render_template("scores_css.html", team_scores=team_scores, event=event, css_mode=css_mode, images=images, image=image)
 
 @app.route('/scores/css/update', methods=['POST'])
 def css_update():
@@ -377,6 +390,7 @@ def css_status():
     return("OK")
 
 @app.route('/scores/css/export')
+@admin_required
 def css_csv():
     em.load()
     csv_buffer = BytesIO()

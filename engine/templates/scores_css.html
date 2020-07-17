@@ -1,13 +1,30 @@
 {% if css_mode %}
-    {% extends 'css_base.html' %}
+{% extends 'css_base.html' %}
 {% else %}
-    {% extends 'base.html' %}
+{% extends 'base.html' %}
 {% endif %}
 
 {% block content %}
 
-{% if css_mode %}
-    <style>
+<style>
+
+    .table td {
+        margin: 0;
+        padding: 0;
+    }
+
+    .table td a {
+        display: block;
+        padding: 16px;
+        text-decoration: none;
+    }
+
+    .btn-group a {
+        display: block;
+        text-decoration: none;
+    }
+
+    {% if css_mode %}
     body {
         background-color: #212529;
     }
@@ -31,9 +48,7 @@
     td {
         cursor: pointer;
     }
-    </style>
-{% else %}
-    <style>
+    {% else %}
     h2, h4, h6 {
         text-align: center;
     }
@@ -45,40 +60,92 @@
     td {
         cursor: pointer;
     }
-    </style>
+    {% endif %}
+</style>
+
+<h2>Leaderboard</h2>
+<br>
+{% if current_user.is_admin %}
+    <h6><a href="/scores/css/export"><i>Export CSV</i></a></h6>
 {% endif %}
-<br/>
-
-    <h2>Leaderboard</h2>
-    {% if current_user.is_admin %}
-        <h6><a href="/scores/css/export"><i>Export CSV</i></a></h6>
-    {% endif %}
-    {% if event %}
-        <h4><i>{{ event }}</i></h4>
-    {% endif %}<br>
-    {% if css_mode %}
-    <table class="table table-borderless table-dark table-hover">
+{% if event %}
+    <h4><i>{{ event }}</i></h4>
+{% endif %}
+<div style="display: flex; justify-content: center; align-items: baseline;">
+    {% if image %}
+        <p style="color: white; margin-right: 1rem;">
+            Only showing <b>{{ image }}!</b>
+        </p>
     {% else %}
-    <table class="table table-bordered table-hover">
+        <p style="color: white; margin-right: 1rem;">
+            Filter by image:
+        </p>
     {% endif %}
-        <thead class="thead-dark">
-            <th>Team</th>
-            <th>Scored Images</th>
-            <th>Elapsed Time</th>
-            <th>Current Score</th>
-        </thead>
-        <tbody>
-            {% for team in team_scores %}
-                <tr>
-                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[0] }}</td>
-                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[1] }}</td>
-                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[2] }}</td>
-                    <td class='clickable' data-href='/scores/css?team={{ team[0] }}'>{{ team[3] }}</td>
-                </tr>
-
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Basic example">
+        {% for image_item in images %}
+        <button type="button" class="btn btn-dark">
+            <a href="/scores/css?image={{ image_item }}">
+                {{ image_item }}
+            </a>
+        </button>
+        &nbsp;
+        {% endfor %}
+        {% if image %}
+        <button type="button" class="btn btn-dark">
+            <a href="/scores/css">
+                All
+            </a>
+        </button>
+        {% endif %}
+    </div>
+</div>
+<br>
+{% if css_mode %}
+<table class="table table-borderless table-dark table-hover">
+{% else %}
+<table class="table table-bordered table-hover">
+{% endif %}
+    <thead class="thead-dark">
+        <th>Team</th>
+        <th>Scored Image(s)</th>
+        <th>Elapsed Time</th>
+        <th>Current Score</th>
+    </thead>
+    <tbody>
+        {% for team in team_scores %}
+        <tr>
+            <td>
+                <a href="/scores/css?team={{ team[0] }}">
+                    {{ team[0] }}
+                </a>
+            </td>
+            {% if not image %}
+            <td>
+                <a href="/scores/css?team={{ team[0] }}">
+                    {{ team[1] }}
+                </a>
+            </td>
+            {% else %}
+            <td>
+                <a href="/scores/css?team={{ team[0] }}">
+                    {{ image }}
+                </a>
+            </td>
+            {% endif %}
+            <td>
+                <a href="/scores/css?team={{ team[0] }}">
+                    {{ team[2] }}
+                </a>
+            </td>
+            <td>
+                <a href="/scores/css?team={{ team[0] }}">
+                    {{ team[3] }}
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
 <br/><br/>
 

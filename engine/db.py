@@ -87,6 +87,36 @@ def get_time_elapsed():
                  - start_time.replace(microsecond=0)
     return(time_elapsed)
 
+def calc_elapsed_time(time1, time2):
+    start_time = datetime.strptime(time1, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(time2, "%Y-%m-%d %H:%M:%S")
+    time_elapsed = end_time.replace(microsecond=0) \
+                 - start_time.replace(microsecond=0)
+    return time_delta_convert(time_elapsed)
+
+def time_delta_convert(time_input):
+    days = time_input.days
+    seconds = time_input.seconds
+    hours = int(seconds / 3600)
+    seconds -= hours * 3600
+    minutes = int(seconds / 60)
+    seconds -= minutes * 60
+
+    if days > 0:
+        hours += (days * 24)
+
+    if hours <= 9:
+        hours = "0" + str(hours)
+    if minutes <= 9:
+        minutes = "0" + str(minutes)
+    if seconds <= 9:
+        seconds = "0" + str(seconds)
+
+    hours = str(hours)
+    minutes = str(minutes)
+    seconds = str(seconds)
+    return hours + ":" + minutes + ":" + seconds
+
 def get_time_left():
     try:
         duration = read_running_config()["settings"]["duration"]
@@ -169,18 +199,24 @@ def get_css_csv(remote, ips):
     http_csv = str.encode("")
     teams = get_css_teams(remote)
     images = get_css_images(remote)
+    team_times = get_css_all_elapsed_time()
     team_scores = []
     #ugly_results = execute("select team, image, points from css_results GROUP BY team, image ORDER BY team DESC")
     for index, team in enumerate(teams):
         team_sum = 0
         for image in images:
             try:
+                # TODO: dont make a SQL call for each image, just make one and parse in python
                 image_sum = execute("SELECT `points` FROM `css_results` WHERE team=? AND image=? ORDER BY time DESC", (team, image), one=True)[0]
                 if team in ips:
                     ip = ips[team]
                 else:
                     ip = "N/A"
-                http_csv += str.encode(find_email(index, remote) + "," + find_alias(index, remote) + "," + team + "," + image + "," + str(image_sum) + "," + ip + "," + get_css_play_time(team, image=image) + "," + get_css_elapsed_time(team) + "\n")
+                try:
+                    team_time = team_times[team]
+                except:
+                    team_time = "00:00:00"
+                http_csv += str.encode(find_email(index, remote) + "," + find_alias(index, remote) + "," + team + "," + image + "," + str(image_sum) + "," + ip + "," + get_css_play_time(team, image=image) + "," + team_time + "\n")
             except:
                 # Ignoring images that a team hasn't started yet
                 pass
@@ -206,12 +242,16 @@ def get_css_images(remote):
             images.append(image[0])
     return images
 
-def get_css_scores(remote):
+def get_css_scores(remote, image=None):
     team_scores = []
     try:
         # Returns most recent image scores for each team
+        # with optional image filter
         # [(time, team, image, points), ...]
-        team_data = execute("SELECT DISTINCT max(time) as time, team, image, points FROM css_results GROUP BY team, image")
+        if image:
+            team_data = execute("SELECT DISTINCT max(time) as time, team, image, points FROM css_results WHERE image=? GROUP BY team, image", (image,))
+        else:
+            team_data = execute("SELECT DISTINCT max(time) as time, team, image, points FROM css_results GROUP BY team, image")
     except:
         return team_scores
 
@@ -303,11 +343,7 @@ def get_css_score(team, remote):
 def get_css_elapsed_time(team):
     try:
         time_records = execute("SELECT `time` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
-        start_time = datetime.strptime(time_records[0][0], "%Y-%m-%d %H:%M:%S")
-        end_time = datetime.strptime(time_records[-1][0], "%Y-%m-%d %H:%M:%S")
-        time_elapsed = end_time.replace(microsecond=0) \
-                     - start_time.replace(microsecond=0)
-        return str(time_elapsed)
+        return calc_elapsed_time(time_records[0][0], time_records[-1][0])
     except:
         return "0:00:00"
 
@@ -318,7 +354,6 @@ def get_css_all_elapsed_time():
     all_times.sort(key=lambda tup: tup[0]) # Sort by time
     all_times.sort(key=lambda tup: tup[1]) # Sort by team
 
-    time_string = "%Y-%m-%d %H:%M:%S"
     current_team = all_times[0][1]
     first_time = all_times[0][0]
     last_time = first_time
@@ -326,9 +361,7 @@ def get_css_all_elapsed_time():
     for time_item in all_times:
         if current_team != time_item[1]: # If new team
             # Calculate previous team's elapsed time
-            first_time = datetime.strptime(first_time, time_string)
-            last_time = datetime.strptime(last_time, time_string)
-            team_times[current_team] = str(last_time.replace(microsecond=0) - first_time.replace(microsecond=0))
+            team_times[current_team] = calc_elapsed_time(first_time, last_time)
 
             # Assign new accurate current_team value
             current_team = time_item[1]
@@ -336,12 +369,9 @@ def get_css_all_elapsed_time():
         last_time = time_item[0]
 
     # Catch the last team
-    start_time = datetime.strptime(first_time, time_string)
-    end_time = datetime.strptime(last_time, time_string)
-    team_times[current_team] = str(end_time.replace(microsecond=0) - start_time.replace(microsecond=0))
+    team_times[current_team] = calc_elapsed_time(first_time, last_time)
 
     return team_times
-
 
 def get_css_play_time(team, image=None):
     try:
@@ -359,9 +389,9 @@ def get_css_play_time(team, image=None):
                       - time1.replace(microsecond=0)
             if time_diff < time_threshold:
                 play_time += time_diff
-        return str(play_time)
+        return time_delta_convert(play_time)
     except:
-        return "0:00:00"
+        return "00:00:00"
 
 def insert_css_score(team, image, points, vulns):
     execute("INSERT INTO `css_results` ('team', 'image', 'points', 'vulns') VALUES (?, ?, ?, ?)", (team, image, points, vulns))
