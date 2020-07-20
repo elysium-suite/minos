@@ -201,25 +201,32 @@ def get_css_csv(remote, ips):
     images = get_css_images(remote)
     team_times = get_css_all_elapsed_time()
     team_scores = []
-    #ugly_results = execute("select team, image, points from css_results GROUP BY team, image ORDER BY team DESC")
-    for index, team in enumerate(teams):
-        team_sum = 0
-        for image in images:
+
+    # Header fields
+    http_csv += str.encode("Email" + "," + "Alias" + "," + "Team" + "," + "Image" + "," + "Score" + "," + "IP" + "," + "Total Play Time" + "," + "Total Elapsed Time" + "\n")
+
+    for image in images:
+        #team_play_times = get_css_play_time(team, image=image)
+        team_play_times = {}
+        team_image_data = get_css_scores(remote, image=image)
+        for team_image_item in team_image_data:
+            team = team_image_item[0]
+            play_time = get_css_play_time(team, image=image)
+            team_index = teams.index(team)
+            if team in ips:
+                ip = ips[team]
+            else:
+                ip = "No IP found"
             try:
-                # TODO: dont make a SQL call for each image, just make one and parse in python
-                image_sum = execute("SELECT `points` FROM `css_results` WHERE team=? AND image=? ORDER BY time DESC", (team, image), one=True)[0]
-                if team in ips:
-                    ip = ips[team]
-                else:
-                    ip = "N/A"
-                try:
-                    team_time = team_times[team]
-                except:
-                    team_time = "00:00:00"
-                http_csv += str.encode(find_email(index, remote) + "," + find_alias(index, remote) + "," + team + "," + image + "," + str(image_sum) + "," + ip + "," + get_css_play_time(team, image=image) + "," + team_time + "\n")
+                team_time = team_times[team]
+                #team_play_time = team_play_times[team]
             except:
-                # Ignoring images that a team hasn't started yet
-                pass
+                team_time = "00:00:00"
+                #team_play_time = "00:00:00"
+
+            http_csv += str.encode(find_email(team_index, remote) + "," + find_alias(team_index, remote) + "," + team + "," + image + "," + str(team_image_item[3]) + "," + ip + "," + play_time + "," + team_time + "\n")
+    with open("exported_scores.csv", 'wb') as f:
+        f.write(http_csv)
     return http_csv
 
 def get_css_teams(remote):
@@ -356,11 +363,15 @@ def get_css_all_elapsed_time():
 
     all_times = execute("SELECT time, team FROM css_results ORDER BY time ASC")
     all_times.sort(key=lambda tup: tup[0]) # Sort by time
+    print("all times", all_times)
     all_times.sort(key=lambda tup: tup[1]) # Sort by team
 
-    current_team = all_times[0][1]
-    first_time = all_times[0][0]
-    last_time = first_time
+    try:
+        current_team = all_times[0][1]
+        first_time = all_times[0][0]
+        last_time = first_time
+    except:
+        return team_times
 
     for time_item in all_times:
         if current_team != time_item[1]: # If new team
@@ -377,25 +388,70 @@ def get_css_all_elapsed_time():
 
     return team_times
 
-def get_css_play_time(team, image=None):
+def calc_play_time(time_records):
     try:
-        if not image:
-            time_records = execute("SELECT `time` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
-        else:
-            time_records = execute("SELECT `time` FROM `css_results` WHERE team=? and image=? ORDER BY time ASC", (team, image))
-
         play_time = timedelta()
         time_threshold = timedelta(seconds=300)
         for index in range(len(time_records) - 1):
-            time1 = datetime.strptime(time_records[index][0], "%Y-%m-%d %H:%M:%S")
-            time2 = datetime.strptime(time_records[index + 1][0], "%Y-%m-%d %H:%M:%S")
+            time1 = datetime.strptime(time_records[index], "%Y-%m-%d %H:%M:%S")
+            time2 = datetime.strptime(time_records[index + 1], "%Y-%m-%d %H:%M:%S")
             time_diff = time2.replace(microsecond=0) \
                       - time1.replace(microsecond=0)
             if time_diff < time_threshold:
                 play_time += time_diff
         return time_delta_convert(play_time)
+    except Exception as e:
+        return "00:00:00"
+
+def get_css_play_time(team, image=None):
+    try:
+        time_records = []
+        if not image:
+            time_records_raw = execute("SELECT `time` FROM `css_results` WHERE team=? ORDER BY time ASC", (team,))
+        else:
+            time_records_raw = execute("SELECT `time` FROM `css_results` WHERE team=? and image=? ORDER BY time ASC", (team, image))
+        for record in time_records_raw:
+            time_records.append(record[0])
     except:
         return "00:00:00"
+    return calc_play_time(time_records)
+
+def get_css_all_play_time(image=None):
+
+    # TODO
+    # THIS FUNCTION IS VERY VERY BROKEN.
+    # DO NOT USE (unless you fix it lol).
+
+    team_play_times = {}
+
+    if image:
+        all_times = execute("SELECT time, team FROM css_results WHERE image=? ORDER BY time ASC", (image,))
+    else:
+        all_times = execute("SELECT time, team FROM css_results ORDER BY time ASC")
+    all_times.sort(key=lambda tup: tup[0]) # Sort by time
+    all_times.sort(key=lambda tup: tup[1]) # Sort by team
+
+    current_team = all_times[0][1]
+    time_records = [all_times[0][0]]
+
+    for time_item in all_times:
+        if current_team != time_item[1]: # If new team
+            # Calculate previous team's play time
+            team_play_times[current_team] = calc_play_time(time_records)
+            print("TIME RECORDS FOR", current_team, time_records)
+            print("DONE WITH", current_team)
+            print("calculated:", team_play_times[current_team])
+
+            # Update current team
+            current_team = time_item[1]
+
+        # Append the new time record to... time records
+        time_records.append(time_item[0])
+
+    # Catch the last team
+    team_play_times[current_team] = calc_play_time(time_records)
+
+    return team_play_times
 
 def insert_css_score(team, image, points, vulns):
     execute("INSERT INTO `css_results` ('team', 'image', 'points', 'vulns') VALUES (?, ?, ?, ?)", (team, image, points, vulns))

@@ -64,10 +64,10 @@
 </style>
 
 <h2>Leaderboard</h2>
-<br>
 {% if current_user.is_admin %}
     <h6><a href="/scores/css/export"><i>Export CSV</i></a></h6>
 {% endif %}
+<br>
 {% if event %}
     <h4><i>{{ event }}</i></h4>
 {% endif %}

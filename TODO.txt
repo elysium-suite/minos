@@ -2,8 +2,9 @@
 services
 - pop3, imap, rdp
 
-remote
+remote/css
 - list ips and history at the bottom of graph
+- improve csv generation (it's very slow)
 
 general
 - chown db after creating it
