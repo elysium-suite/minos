@@ -152,34 +152,64 @@ class EngineModel(object):
         randomHash1 = "71844fd161e20dc78ce6c985b42611cfb11cf196"
         randomHash2 = "e31ad5a009753ef6da499f961edf0ab3a8eb6e5f"
         chalString = db.printAsHex(db.xor(randomHash1, randomHash2))
-        if password:
-            key = db.printAsHex(sha256(password.encode()).digest())
-            chalString = db.printAsHex(db.xor(chalString, key))
+        key = db.printAsHex(sha256(password.encode()).digest())
+        chalString = db.printAsHex(db.xor(chalString, key))
         if chalString == challenge:
             print("[INFO] Challenge string from score update was correct!")
             return True
         else:
             return False
 
-    def decrypt_vulns(self, vulns, password=None):
+    def parse_update(self, update, password):
+        update = bytes.fromhex(update)
+        try:
+            key = sha256(password.encode()).digest()
+            iv = update[:12]
+            mac = update[len(update)-16:]
+            ciphertext = update[12:len(update)-16]
+            cipher = AES.new(key, AES.MODE_GCM, nonce=iv)
+            update = cipher.decrypt_and_verify(ciphertext, mac)
+            update = update.decode("ascii").strip().rstrip()
+        except Exception as e:
+            print("[ERROR] Failed to decrypt client update:", e)
+            return "", False
+
+        index = 0
+        update_data = {}
+        update = update.split("|-SP-|")
+        while index < len(update) - 1:
+            update_data[update[index]] = update[index + 1]
+            index += 2
+
+        return update_data, True
+
+    def decrypt_vulns(self, vulns, password, points):
         vulns = bytes.fromhex(vulns)
+        try:
+            key = sha256(password.encode()).digest()
+            iv = vulns[:12]
+            mac = vulns[len(vulns)-16:]
+            ciphertext = vulns[12:len(vulns)-16]
+            cipher = AES.new(key, AES.MODE_GCM, nonce=iv)
+            vulns = cipher.decrypt_and_verify(ciphertext, mac)
+            vulns = vulns.decode("ascii").strip().rstrip()
+        except Exception as e:
+            print("[ERROR] Failed to decrypt client vulns:", e)
+            return "", False
 
-        if password:
+        vulns = vulns.split("|-VS-|")
+
+        vuln_points = 0
+        for vuln in vulns:
             try:
-                key = sha256(password.encode()).digest()
-                iv = vulns[:12]
-                mac = vulns[len(vulns)-16:]
-                ciphertext = vulns[12:len(vulns)-16]
-                cipher = AES.new(key, AES.MODE_GCM, nonce=iv)
-                vulns = cipher.decrypt_and_verify(ciphertext, mac)
-                vulns = vulns.decode("ascii").strip().rstrip()
+                vuln_points += int(vuln.split(" ")[-2])
             except:
-                print("[ERROR] Failed to decrypt client traffic.")
-                return "", False
-        else:
-            vulns = vulns.decode("ascii")
+                pass
 
-        vulns = vulns.split("|-|")
+        if vuln_points != int(points):
+            print("[ERROR] Vuln points did not add up to reported score!")
+            return "", False
+
         return vulns, True
 
 def start():

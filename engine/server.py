@@ -22,6 +22,7 @@ login_manager.init_app(app)
 
 # CSS hardcoded values
 permitted_new_css_ip = "10.10.0.2" # Put your whitelisted IP here
+remote_backup_key = "ThisIsAReallyCoolAndSecureKeyLol" # Put your backup hardcoded key here (must be the same as aeacus crypto.go)
 
 # Caching and refreshing...
 refresh_threshold = timedelta(seconds=15)
@@ -288,45 +289,46 @@ def css():
 @app.route('/scores/css/update', methods=['POST'])
 def css_update():
     em.load()
+    config = db.read_running_config()
     try:
-        team = request.form["team"].rstrip().strip()
-        image = request.form["image"]
-        score = int(request.form["score"])
-        challenge = request.form["challenge"]
-        vulns = request.form["vulns"]
-        # id must be unqiue for each VM to tell dupes (todo)
-        id = request.form["id"]
+        password = config["remote"]["password"]
     except:
-        print("[ERROR] Score update from image did not have all required fields, or had malformed fields.")
+        password = remote_backup_key
+    try:
+        update = request.form["update"].rstrip().strip()
+        update_data, result = em.parse_update(update, password)
+        if not result:
+            print("[ERROR] Failure parsing update field.")
+            return ("FAIL")
+        team = update_data["team"]
+        image = update_data["image"]
+        score = update_data["score"]
+        challenge = update_data["challenge"]
+        vulns = update_data["vulns"]
+        time = update_data["time"]
+    except Exception as e:
+        print("[ERROR] Score update from image did not have all required fields, or had malformed fields:", e)
         return("FAIL")
     if not db.validate_alphanum(team) or not db.validate_alphanum(image):
-        print("[ERROR] Team or image contained illegal characters. team", image)
+        print("[ERROR] Team or image contained illegal characters.")
         return("FAIL")
     if "teams" in em.remote:
         if team not in em.remote["teams"]:
-            print("[ERROR] Score update had invalid team name.")
+            print("[ERROR] Score update had invalid team name:", team)
             return("FAIL")
     if "images" in em.remote:
         if image not in em.remote["images"]:
-            print("[ERROR] Score update had invalid image name.")
+            print("[ERROR] Score update had invalid image name:", image)
             return("FAIL")
-    config = db.read_running_config()
-    if "remote" in config and "password" in config["remote"]:
-        config_password = config["remote"]["password"]
-        if em.verify_challenge(challenge, password=config_password):
-            vulns, success = em.decrypt_vulns(vulns, password=config_password)
-        else:
-            print("[ERROR] Score update from image did not pass (password-protected) challenge verification.")
-            return("FAIL")
+    if em.verify_challenge(challenge, password):
+        vulns, success = em.decrypt_vulns(vulns, password, score)
     else:
-        if em.verify_challenge(challenge):
-            vulns, success = em.decrypt_vulns(vulns)
-        else:
-            print("[ERROR] Score update from image did not pass (passwordless) challenge verification.")
-            return("FAIL")
+        print("[ERROR] Score update from image did not pass (password-protected) challenge verification.")
+        return("FAIL")
     if success:
         vulns = db.printAsHex("|-|".join(vulns).encode())
         db.insert_css_score(team, image, score, vulns)
+        print("Found IP", request.remote_addr, "for team", team)
         ips[team] = request.remote_addr
         return("OK")
     else:
