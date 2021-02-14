@@ -71,6 +71,7 @@ ln -s /etc/nginx/sites-available/minos.site /etc/nginx/sites-enabled/
 
 echo -e "$plus Creating services (init.d style)..."
 cp -f /opt/minos/setup/minos /etc/init.d/
+touch /opt/minos/engine/scoring.db
 
 chgrp -R www-data /opt/minos/engine/etc/
 chmod -R g+w /opt/minos
