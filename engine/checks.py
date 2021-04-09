@@ -106,39 +106,55 @@ def check_ssh(ip, port, user, private_key):
 
 import subprocess
 import hashlib
-
-# TODO: replace with pysmb
+import socket
+from smb.SMBConnection import SMBConnection
 
 @timeout_decorator.timeout(20, use_signals=False)
 def check_smb(ip, port, anon, share, checkfile, filehash, domain):
-    path = '//{}/{}'.format(ip, share)
+    if not domain:
+        domain = ""
+
+    conn = SMBConnection("Guest", "", socket.gethostname(), "none", domain, is_direct_tcp=True)
+    try:
+        conn.connect(ip, port)
+    except Exception as e:
+        return 0, "Failed to connect to ip: %s on port %s." % (ip, port)
+
+    try:
+        shareList = conn.listShares(timeout=5)
+        found = False
+        for i in range(len(shareList)):
+            if shareList[i].name == share:
+                found = True
+                break
+
+        if found == False:
+            return 0, "Samba share %s not found." % (share)
+    except Exception as e:
+            return 0, "Failed to retrieve list of shares."
+
     if checkfile and filehash:
-        tmpfile = path + "tmpfiles/smb-%s-%s-%s-checkfile" % (share, ip, checkfile)
-        cmd = 'get "{}" "{}"'.format(checkfile, tmpfile)
-        smbcli = ['smbclient', "-N", path, '-c', cmd]
-        if domain:
-            smbcli.extend(['-W', domain])
-        #try:
         print("[DEBUG-SMB] Grabbing file for", ip)
-        output = subprocess.check_output(smbcli, stderr=subprocess.STDOUT)
-        with open(tmpfile, "rb") as f:
-            content = f.read()
-            checkhash = hashlib.sha1(content).hexdigest();
-        if checkhash != filehash:
-            return(0, "Hash %s does not match %s." % (checkhash, filehash))
-        return 1, None
-        #except Exception as e:
-        #    return 0, str(e)
-    else:
-        print("[DEBUG-SMB] Trying anonymous/noauth for", ip)
-        smbcli = ['smbclient', "-N", "-L",  path]
-        if domain:
-            smbcli.extend(['-W', domain])
+        tmpfile = path + "engine/tmpfiles/smb-%s-%s-%s-checkfile" % (share, ip, checkfile)
         try:
-            output = subprocess.check_output(smbcli, stderr=subprocess.STDOUT)
+            with open(tmpfile, "wb") as fp:
+                conn.retrieveFile(share, checkfile, fp)
+            
+            with open(tmpfile, "rb") as f:
+                content = f.read()
+                checkhash = hashlib.sha1(content).hexdigest();
+            if checkhash != filehash:
+                return(0, "Hash %s does not match %s." % (checkhash, filehash))
             return 1, None
         except Exception as e:
-            return 0, str(e)
+            return 0, "Failed to read share %s." % (share)
+    else:
+        print("[DEBUG-SMB] Trying anonymous/noauth for", ip)
+        try:
+            fileList = conn.listPath(share, "/")
+            return 1, None
+        except Exception as e:
+            return 0, "Failed to read share %s." % (share) 
 
 
 ###################

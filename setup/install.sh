@@ -61,6 +61,7 @@ install_package python3-dev
 install_package freerdp2-x11
 install_package smbclient
 install_package nginx
+CRYPTOGRAPHY_DONT_BUILD_RUST=1
 pip3 install -U dnspython pysmb paramiko requests timeout-decorator toml pycryptodome
 pip3 install -U Flask flask_login flask-wtf bcrypt uwsgi
 
