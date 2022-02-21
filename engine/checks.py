@@ -57,7 +57,7 @@ def checker(system, check, type, opts, team, ip):
         elif type == "dns":
             port = gopt('port', opts) or "53"
             query = gopt('query', opts) or None
-            query_type = gopt('port', opts) or "A"
+            query_type = gopt('query_type', opts) or "A"
             answer = gopt('answer', opts) or None
             if not query or not answer:
                 result, error = (0, "No query specified")
