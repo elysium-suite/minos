@@ -295,6 +295,12 @@ points = 500
 - The solution is to `chown` everything.
  - `chown -R www-data:www-data /opt/minos`
 
+**502 Bad Gateway**
+- This may occur when the configuration file fails to be read from the /opt/minos/engine/running-config.cfg file. To fix this you may run `cp /opt/minos/config.cfg /opt/minos/engine/running-config.cfg` to fix this.
+
+**Scoring engine backend is not running**
+- You may get this error when you open up the dashboard status page. This can be fixed by adding `running = 1` in the settings section of the configuration.
+
 ## Contributing and Disclaimer
 
 If you have anything you would like to add or fix, please make a pull request! No improvement or fix is too small, and help is always appreciated.
