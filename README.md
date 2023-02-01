@@ -166,7 +166,7 @@ tolerance = 50 # Difference tolerance, default 20%
 ```
 [systems.systemname.ftp]
 port = 1234 # Default 21
-file = "cool_bug_facts.txt" # File to retrieve
+path = "cool_bug_facts.txt" # File to retrieve
 hash = "9bb6c1dc2408ee6cb09778ca2ac6abad91de9be4 " # sha1 hash of the file
 file = "systemname.html" # Local checkfile to compare with
 ```
