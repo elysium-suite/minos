@@ -166,7 +166,7 @@ tolerance = 50 # Difference tolerance, default 20%
 ```
 [systems.systemname.ftp]
 port = 1234 # Default 21
-file = "cool_bug_facts.txt" # File to retrieve
+path = "cool_bug_facts.txt" # File to retrieve
 hash = "9bb6c1dc2408ee6cb09778ca2ac6abad91de9be4 " # sha1 hash of the file
 file = "systemname.html" # Local checkfile to compare with
 ```
@@ -294,6 +294,12 @@ points = 500
 - This occurs because the database is owned by root (the `Minos` process) and can't be read by the `uwsgi` worker threads.
 - The solution is to `chown` everything.
  - `chown -R www-data:www-data /opt/minos`
+
+**502 Bad Gateway**
+- This may occur when the configuration file fails to be read from the /opt/minos/engine/running-config.cfg file. To fix this you may run `cp /opt/minos/config.cfg /opt/minos/engine/running-config.cfg` to fix this.
+
+**Scoring engine backend is not running**
+- You may get this error when you open up the dashboard status page. This can be fixed by adding `running = 1` in the settings section of the configuration.
 
 ## Contributing and Disclaimer
 
