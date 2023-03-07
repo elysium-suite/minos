@@ -1,5 +1,9 @@
 # Minos Scoring Engine
 
+Minos is deprecated. It may still work for your use case, but consider using [DWAYNE-INATOR-5000](https://github.com/DSU-DefSec/DWAYNE-INATOR-5000) for service uptime checks and [sarpedon](https://github.com/elysium-suite/sarpedon) for remote vulnerability remedation reporting. 
+
+---
+
 Minos acts as a service uptime scorer (ex. your service has been up 50% of the time, and is down right now). It is based on DSU's DefSec Club [Scoring Engine](https://github.com/DSUDefSec/ScoringEngine).
 
 ## Installation
